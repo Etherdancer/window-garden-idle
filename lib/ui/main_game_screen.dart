@@ -6,6 +6,8 @@ import '../models/plant.dart';
 import '../models/garden_location.dart';
 import '../models/species.dart';
 import '../state/plant_notifier.dart';
+import '../services/pwa_install.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'journal_screen.dart';
 import 'welcome_screen.dart';
 import 'widgets/plant_visualizer.dart';
@@ -196,6 +198,44 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
               ),
             ),
           ),
+
+          // Install App Button
+          if (isPwaInstallable() || (kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS)))
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton.filled(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  if (isPwaInstallable()) {
+                    promptPwaInstall();
+                  } else {
+                    // Show iOS install instructions
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Install Window Garden'),
+                        content: const Text('To install this app on your device, tap the Share icon and select "Add to Home Screen".'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Got it'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.install_mobile, color: Colors.white),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFFD67C52),
+                  padding: const EdgeInsets.all(12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                tooltip: 'Install App',
+              ),
+            ),
 
           // Botanist Journal Button
           IconButton.filled(
