@@ -34,6 +34,85 @@
   <script src="install.js"></script>
 </head>
 <body>
+  <div class="loader-container" id="loader-container">
+    <div class="background-image"></div>
+    <div class="overlay"></div>
+    
+    <div class="content-wrapper">
+      <div class="title-container">
+        <h1>Window Garden Idle</h1>
+        <p class="subtitle">Cultivate peace, one leaf at a time.</p>
+      </div>
+      
+      <div class="center-display">
+        <div class="plant-display">
+          <img class="plant-img" src="assets/images/plants/monstera_stage5.png" alt="Monstera" onerror="this.style.display='none'">
+          <img class="pot-img" src="assets/images/pots/terracotta.png" alt="Pot" onerror="this.style.display='none'">
+        </div>
+      </div>
+
+      <div class="loading-footer">
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <p id="loading-text">Starting up...</p>
+      </div>
+    </div>
+  </div>
+  <style>
+    body { background-color: #2C2520; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+    
+    .loader-container { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+    
+    .background-image {
+      position: absolute; inset: 0;
+      background-image: url('assets/images/locations/tokyo.png');
+      background-size: cover;
+      background-position: center;
+      filter: blur(4px) brightness(0.8);
+      transform: scale(1.05);
+      z-index: 1;
+    }
+    
+    .overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, rgba(44, 37, 32, 0.4) 0%, rgba(44, 37, 32, 0.8) 100%);
+      z-index: 2;
+    }
+
+    .content-wrapper {
+      position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: space-between; height: 100%; padding: 40px 20px; box-sizing: border-box; width: 100%;
+    }
+
+    .title-container { text-align: center; margin-top: 40px; animation: fade-in-down 1s ease-out; }
+    h1 { font-family: serif; font-size: 36px; color: #F3EFE9; margin: 0; text-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .subtitle { color: #E4DCD3; font-size: 16px; margin-top: 8px; font-style: italic; opacity: 0.9; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+
+    .center-display { flex: 1; display: flex; align-items: center; justify-content: center; }
+    .plant-display { position: relative; width: 200px; height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; animation: float 6s ease-in-out infinite; }
+    .plant-img { width: 180px; height: auto; position: absolute; bottom: 40px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.4)); z-index: 2; }
+    .pot-img { width: 120px; height: auto; position: absolute; bottom: 0; filter: drop-shadow(0 15px 20px rgba(0,0,0,0.5)); z-index: 3; }
+
+    .loading-footer { width: 100%; max-width: 300px; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; animation: fade-in-up 1s ease-out; }
+    .progress-bar-container { width: 100%; height: 6px; background: rgba(243, 239, 233, 0.2); border-radius: 8px; overflow: hidden; margin-bottom: 12px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1); }
+    .progress-bar { width: 5%; height: 100%; background: linear-gradient(90deg, #D67C52, #FFB07A); transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px rgba(214, 124, 82, 0.5); }
+    #loading-text { font-size: 13px; color: #F3EFE9; font-weight: 500; letter-spacing: 0.5px; opacity: 0.8; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+    @keyframes fade-in-down {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .loader-hidden { opacity: 0; pointer-events: none; transition: opacity 0.8s ease; }
+  </style>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

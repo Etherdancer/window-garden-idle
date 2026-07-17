@@ -1,7 +1,7 @@
 @JS()
 library pwa_install;
 
-import 'package:js/js.dart';
+import 'dart:js_interop';
 
 @JS('isInstallable')
 external bool isPwaInstallable();

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/species.dart';
 import '../models/product_ad.dart';
 import '../state/plant_notifier.dart';
+import '../state/player_profile_notifier.dart';
+import '../models/buff.dart';
 import 'widgets/native_ad_widget.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -13,14 +15,16 @@ const _kAllTab = 'all';
 
 const _kJournalTabs = [
   _TabInfo(id: _kAllTab, label: 'All'),
-  _TabInfo(id: 'Culinary Herbs', label: 'Herbs'),
-  _TabInfo(id: 'Medicinal & Supplement Herbs', label: 'Medicinal'),
-  _TabInfo(id: 'Superfoods & Adaptogens', label: 'Superfoods'),
-  _TabInfo(id: 'Tea & Beverage Plants', label: 'Tea'),
-  _TabInfo(id: 'Spice Plants', label: 'Spice'),
-  _TabInfo(id: 'Edible Flowers & Garnish', label: 'Flowers'),
-  _TabInfo(id: 'Windowsill Edibles', label: 'Veg'),
-  _TabInfo(id: 'Traditional Medicine & Wellness', label: 'Traditional'),
+  _TabInfo(id: 'The Tropical Canopy', label: 'Tropical'),
+  _TabInfo(id: 'The Arid Survivors', label: 'Arid'),
+  _TabInfo(id: 'The Balcony Bloomers', label: 'Bloomers'),
+  _TabInfo(id: 'The Epiphytes', label: 'Epiphytes'),
+  _TabInfo(id: 'The Shade Dwellers', label: 'Ferns'),
+  _TabInfo(id: 'Micro-Farmers', label: 'Edibles'),
+  _TabInfo(id: 'The Bog Hunters', label: 'Carnivorous'),
+  _TabInfo(id: 'The Masters of Time', label: 'Bonsai'),
+  _TabInfo(id: 'The Water Bowls', label: 'Aquatic'),
+  _TabInfo(id: 'The Spring Sleepers', label: 'Bulbs'),
 ];
 
 class _TabInfo {
@@ -75,6 +79,18 @@ class _JournalScreenState extends ConsumerState<JournalScreen>
       }
     } catch (_) {}
 
+    final pressedIds = ref.watch(playerProfileProvider);
+    
+    // Calculate global active buffs
+    final Map<BuffType, double> activeBuffs = {};
+    for (final id in pressedIds) {
+      final s = PlantSpecies.getById(id);
+      if (s != null) {
+        final b = s.pressedBuff;
+        activeBuffs[b.type] = (activeBuffs[b.type] ?? 0.0) + b.value;
+      }
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9F5F0),
       appBar: AppBar(
@@ -103,23 +119,70 @@ class _JournalScreenState extends ConsumerState<JournalScreen>
           ),
           labelColor: const Color(0xFF5D7A68),
           unselectedLabelColor: const Color(0xFF8A8279),
-          indicatorColor: const Color(0xFF5D7A68),
-          indicatorWeight: 2.5,
+          indicatorColor: const Color(0xFF628B48),
+          indicatorWeight: 3,
           tabAlignment: TabAlignment.start,
           tabs: _kJournalTabs
               .map((t) => Tab(text: t.label))
               .toList(),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _kJournalTabs.map((tab) {
-          return _JournalTabView(
-            categoryFilter: tab.id,
-            speciesMaxStage: speciesMaxStage,
-            buildInfoRow: _buildInfoRow,
-          );
-        }).toList(),
+      body: Column(
+        children: [
+          // Active Buffs Summary Header
+          if (activeBuffs.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              color: const Color(0xFFE8ECD7),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.stars, color: Color(0xFF628B48), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Global Active Buffs',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2C3E2D),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: activeBuffs.entries.map((e) {
+                      final buffType = e.key;
+                      final totalValue = e.value;
+                      // Determine short name manually or create a dummy PlantBuff
+                      final dummy = PlantBuff(type: buffType, value: totalValue);
+                      return Text(
+                        '• ${dummy.shortName}: +${(totalValue * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF4A554A)),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _kJournalTabs.map((tab) {
+                return _JournalTabView(
+                  categoryFilter: tab.id,
+                  speciesMaxStage: speciesMaxStage,
+                  pressedIds: pressedIds,
+                  buildInfoRow: _buildInfoRow,
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -165,11 +228,13 @@ class _JournalScreenState extends ConsumerState<JournalScreen>
 class _JournalTabView extends StatelessWidget {
   final String categoryFilter;
   final Map<String, int> speciesMaxStage;
+  final List<String> pressedIds;
   final Widget Function(String label, String value) buildInfoRow;
 
   const _JournalTabView({
     required this.categoryFilter,
     required this.speciesMaxStage,
+    required this.pressedIds,
     required this.buildInfoRow,
   });
 
@@ -216,14 +281,15 @@ class _JournalTabView extends StatelessWidget {
       itemBuilder: (context, index) {
         final s = species[index];
         final maxStage = speciesMaxStage[s.id] ?? 0;
+        final isPressed = pressedIds.contains(s.id);
         final categoryName = _categoryDisplayName(s);
 
         // Stage Unlocks mapping to Growth Stages 1-5
-        final bool isStage1Unlocked = maxStage >= 1;
-        final bool isStage2Unlocked = maxStage >= 2;
-        final bool isStage3Unlocked = maxStage >= 3;
-        final bool isStage4Unlocked = maxStage >= 4;
-        final bool isStage5Unlocked = maxStage >= 5;
+        final bool isStage1Unlocked = maxStage >= 1 || isPressed;
+        final bool isStage2Unlocked = maxStage >= 2 || isPressed;
+        final bool isStage3Unlocked = maxStage >= 3 || isPressed;
+        final bool isStage4Unlocked = maxStage >= 4 || isPressed;
+        final bool isStage5Unlocked = maxStage >= 5 || isPressed;
 
         final cardWidget = Card(
           margin: const EdgeInsets.only(bottom: 16),
@@ -277,15 +343,18 @@ class _JournalTabView extends StatelessWidget {
               subtitle: Padding(
                 padding: const EdgeInsets.only(left: 36, top: 4),
                 child: Text(
-                  isStage5Unlocked 
-                      ? '100% Discovered' 
-                      : isStage1Unlocked 
-                          ? 'Growing... current record stage $maxStage'
-                          : 'Plant to unlock taxonomy and biology data.',
-                  style: const TextStyle(
+                  isPressed
+                      ? 'Fully Pressed - Buff Active'
+                      : isStage5Unlocked 
+                          ? '100% Discovered - Ready to Harvest' 
+                          : isStage1Unlocked 
+                              ? 'Growing... current record stage $maxStage'
+                              : 'Plant to unlock taxonomy and biology data.',
+                  style: TextStyle(
                     fontFamily: 'OpenSans',
                     fontSize: 11,
-                    color: Color(0xFF8A8279),
+                    color: isPressed ? const Color(0xFF628B48) : const Color(0xFF8A8279),
+                    fontWeight: isPressed ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ),
@@ -295,6 +364,34 @@ class _JournalTabView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Pressed Buff (if pressed)
+                      if (isPressed)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8ECD7),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.stars, color: Color(0xFF628B48), size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Provides: ${s.pressedBuff.description}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF324831),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
                       // Stage 0: Basic Description (Always Unlocked)
                       _buildCollapsibleStage(
                         context: context,
@@ -386,14 +483,14 @@ class _JournalTabView extends StatelessWidget {
                       // Stage 4: Uses and Recipes
                       _buildCollapsibleStage(
                         context: context,
-                        title: s.journalData.useTitle ?? 'Culinary & Practical Use',
+                        title: s.journalData.useTitle ?? (s.category == 'Micro-Farmers' ? 'Culinary & Practical Use' : 'Specialized Display & Care'),
                         isUnlocked: isStage4Unlocked,
-                        lockedMessage: 'Grow this plant to Stage 4 to unlock practical uses and recipes.',
+                        lockedMessage: s.category == 'Micro-Farmers' ? 'Grow this plant to Stage 4 to unlock practical uses and recipes.' : 'Grow this plant to Stage 4 to unlock specialized care techniques and display ideas.',
                         initiallyExpanded: false,
                         content: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.restaurant, color: Color(0xFF8A8279), size: 18),
+                            Icon(s.category == 'Micro-Farmers' ? Icons.restaurant : Icons.eco, color: const Color(0xFF8A8279), size: 18),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(

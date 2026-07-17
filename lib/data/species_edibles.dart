@@ -1,4 +1,5 @@
 import '../models/species.dart';
+import '../models/buff.dart';
 
 const List<PlantSpecies> ediblePlants = [
   PlantSpecies(
@@ -10,6 +11,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.8,
     lightNeed: 0.9,
     growthRate: 0.8,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A sprawling, heavy-bearing vine that produces juicy, red, water-dense fruits. Botanically a fruit, but culinary treated as a vegetable. It forms the backbone of global cuisines, especially Italian.',
       botanicalDetails: 'Tomatoes are members of the Nightshade family, and their green leaves and stems are highly toxic, containing the alkaloid tomatine. The plant protects its fruit until the seeds are mature, at which point the fruit rapidly turns red and the toxic compounds degrade, signaling to animals that it is safe to eat.',
@@ -28,6 +30,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.6,
     lightNeed: 0.7,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.growthSpeed, value: 0.01),
     journalData: PlantJournalData(
       description: 'A biennial plant grown for its thick, fleshy, highly nutritious taproot. Known globally for its bright orange color and sweet, earthy crunch.',
       botanicalDetails: 'Carrots are incredibly rich in beta-carotene, which the human body converts directly into Vitamin A. Because beta-carotene is fat-soluble, eating raw carrots actually provides very little nutritional benefit. You must cook them in fat (like butter or oil) for your body to absorb the vitamins.',
@@ -46,6 +49,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.7,
     lightNeed: 0.8,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A bushy plant that produces underground tubers. It is one of the most incredibly calorie-dense, easy-to-grow, and vital food crops in human history.',
       botanicalDetails: 'Potatoes are modified stems (tubers), not roots. If a potato tuber is exposed to sunlight while growing, it will turn green and begin producing massive amounts of solanine, a highly toxic nerve poison. Never eat a green potato!',
@@ -64,6 +68,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.6,
     lightNeed: 0.6,
     growthRate: 1.0,
+    pressedBuff: const PlantBuff(type: BuffType.growthSpeed, value: 0.01),
     journalData: PlantJournalData(
       description: 'A ridiculously fast-growing root vegetable that is ready to harvest in as little as 3 weeks. It provides a sharp, peppery, watery crunch to salads.',
       botanicalDetails: 'The sharp, spicy bite of a raw radish is caused by allyl isothiocyanate. Interestingly, this chemical is highly volatile and breaks down instantly when heated. If you roast or boil a radish, it completely loses its spicy bite and becomes as mild, sweet, and soft as a turnip.',
@@ -82,6 +87,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.5,
     lightNeed: 0.8,
     growthRate: 0.5,
+    pressedBuff: const PlantBuff(type: BuffType.lightAbsorption, value: 0.01),
     journalData: PlantJournalData(
       description: 'An incredibly pungent, bulbous plant from the onion family. It is arguably the single most important and universally loved aromatic flavor base in global cooking.',
       botanicalDetails: 'An intact garlic clove has absolutely no smell. The intense flavor is created by a chemical defense mechanism! When the cell walls are crushed by a knife, the enzyme alliinase reacts with alliin to create allicin—a highly volatile, sulfur-based compound meant to burn the mouths of grazing animals.',
@@ -100,6 +106,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.6,
     lightNeed: 0.8,
     growthRate: 0.6,
+    pressedBuff: const PlantBuff(type: BuffType.lightAbsorption, value: 0.01),
     journalData: PlantJournalData(
       description: 'A bulbous vegetable composed of concentric fleshy layers. It provides a sharp, pungent bite when raw, but transforms into an incredibly rich, sweet, umami flavor when cooked.',
       botanicalDetails: 'When you slice an onion, you rupture cells that release a volatile sulfur gas called syn-propanethial-S-oxide. When this gas hits the water in your eyes, it literally reacts to create a microscopic amount of sulfuric acid. Your eyes cry to physically flush the acid out!',
@@ -118,6 +125,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.8,
     lightNeed: 0.6,
     growthRate: 0.9,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A fast-growing, cool-weather crop harvested for its crisp, water-dense green leaves. It is the absolute foundation of almost all modern salads.',
       botanicalDetails: 'If the weather gets too hot, the plant undergoes "bolting." The lettuce will rapidly shoot up a tall stalk of yellow flowers, and the leaves will instantly flood with an intensely bitter, milky white sap to stop animals from eating the seeds. Bolted lettuce is completely inedible.',
@@ -136,6 +144,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.7,
     lightNeed: 0.6,
     growthRate: 0.8,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A dark green, leafy vegetable that is incredibly nutrient-dense. It grows quickly in cool weather and shrinks violently to almost nothing when exposed to heat.',
       botanicalDetails: 'Spinach is famous for containing iron, but it also contains massive amounts of oxalic acid. Oxalic acid literally binds to the iron and calcium in the leaf, preventing the human digestive system from absorbing it. Eating raw spinach provides very little iron; it must be cooked to break down the oxalic acid!',
@@ -154,6 +163,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.9,
     lightNeed: 0.8,
     growthRate: 0.8,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A rapidly growing, creeping vine that produces cylindrical, heavily water-dense fruits. They provide an incredibly crisp, refreshing, and cooling crunch to summer dishes.',
       botanicalDetails: 'Cucumbers are 95% water! The interior of a cucumber can actually be up to 20 degrees Fahrenheit cooler than the outside air temperature on a hot summer day, which is the literal origin of the phrase "Cool as a cucumber."',
@@ -172,6 +182,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.8,
     lightNeed: 0.9,
     growthRate: 0.9,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A bushy summer squash that produces an absolute avalanche of dark green, cylindrical fruits. It is famously prolific, growing from a tiny seed to a massive bush in a matter of weeks.',
       botanicalDetails: 'Zucchini plants produce both male and female flowers on the same plant. The male flowers bloom first on long stalks to attract bees, followed a week later by the female flowers, which have tiny, miniature zucchinis attached to their base waiting to be pollinated.',
@@ -190,6 +201,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.7,
     lightNeed: 0.9,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A bushy plant that produces large, hollow, bell-shaped fruits. They offer a sweet, watery crunch and absolutely zero heat, despite being closely related to fiery chili peppers.',
       botanicalDetails: 'Green, yellow, orange, and red bell peppers are all the exact same plant, just harvested at different stages of ripeness! A green pepper is entirely unripe. If left on the vine, it will slowly transition to yellow, orange, and finally red, becoming drastically sweeter and gaining massive amounts of Vitamin C.',
@@ -208,6 +220,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.8,
     lightNeed: 0.9,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A striking tropical perennial usually grown as an annual. It produces massive, glossy, deep purple fruits with spongy, slightly bitter flesh that must be heavily cooked to become palatable.',
       botanicalDetails: 'The spongy flesh of a raw eggplant is filled with microscopic air pockets. If you fry it raw, these pockets act like a sponge, instantly absorbing massive, disgusting amounts of oil. You must salt the eggplant first to collapse the cell walls and draw out the water and bitterness before cooking.',
@@ -226,6 +239,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.7,
     lightNeed: 0.7,
     growthRate: 0.8,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A climbing, cool-weather vine that produces pods containing small, sweet, bright green seeds. They are incredibly tender and best eaten raw or barely blanched.',
       botanicalDetails: 'Peas have an incredibly high sugar content when harvested, but the moment they are picked, enzymes immediately begin converting the sugar into tough starch. This is why frozen peas (which are flash-frozen within 2 hours of picking) actually taste drastically sweeter than "fresh" peas that have been sitting on a grocery shelf for 3 days.',
@@ -244,6 +258,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 0.8,
     lightNeed: 0.8,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A low-growing, spreading perennial that produces incredibly sweet, juicy, bright red fruits. It is the most widely cultivated berry in the world.',
       botanicalDetails: 'A strawberry is not actually a botanical berry! It is an "aggregate accessory fruit." The fleshy red part we eat is actually the swollen receptacle of the flower. The true botanical "fruits" are the tiny yellow seeds (achenes) dotting the outside, each containing a single seed.',
@@ -262,6 +277,7 @@ const List<PlantSpecies> ediblePlants = [
     waterNeed: 1.0,
     lightNeed: 1.0,
     growthRate: 0.8,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A massive, sprawling, sun-loving vine that produces enormous, heavy fruits with a thick green rind and sweet, crisp, water-dense red flesh. The ultimate summer treat.',
       botanicalDetails: 'Watermelons are over 92% water. They require massive, consistent watering to swell to their massive size, but if they receive too much water right before harvest, the cells will expand so rapidly the melon will literally explode in the field.',

@@ -2,15 +2,16 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../../models/garden_location.dart';
+import '../../services/sunlight_service.dart';
 
 class ProceduralWindowWidget extends StatelessWidget {
   final GardenLocation location;
-  final double lightLevel;
+  final double blindsLevel;
 
   const ProceduralWindowWidget({
     Key? key,
     required this.location,
-    required this.lightLevel,
+    required this.blindsLevel,
   }) : super(key: key);
 
   @override
@@ -21,28 +22,35 @@ class ProceduralWindowWidget extends StatelessWidget {
       initialData: tz.TZDateTime.now(locationTz),
       builder: (context, snapshot) {
         final time = snapshot.data ?? tz.TZDateTime.now(locationTz);
-        final hour = time.hour;
         
-        // Determine tint color and blend mode based on time of day
+        final maxSunlight = SunlightService.calculateSunlight(
+          time.toUtc(), 
+          location.latitude, 
+          location.longitude,
+        );
+
+        // Determine tint color and blend mode based on maxSunlight and hour
         Color tintColor = Colors.transparent;
         BlendMode blendMode = BlendMode.dst;
         
-        if (hour >= 5 && hour < 8) {
-          // Sunrise: warm orange/pink overlay
-          tintColor = const Color(0xFFFFB07A).withValues(alpha: 0.35);
-          blendMode = BlendMode.overlay;
-        } else if (hour >= 8 && hour < 17) {
-          // Day: unmodified beautiful image
-          tintColor = Colors.transparent;
-          blendMode = BlendMode.dst;
-        } else if (hour >= 17 && hour < 20) {
-          // Sunset: deep violet/red hard light
-          tintColor = const Color(0xFF5A2A3D).withValues(alpha: 0.55);
-          blendMode = BlendMode.hardLight;
-        } else {
-          // Night: dark blue multiply
+        final hour = time.hour;
+        
+        if (maxSunlight == 0.0) {
+          // Night
           tintColor = const Color(0xFF0A1526).withValues(alpha: 0.85);
           blendMode = BlendMode.srcATop; 
+        } else if (maxSunlight < 0.3) {
+          // Sunrise/Sunset (low sun)
+          if (hour < 12) {
+            tintColor = const Color(0xFFFFB07A).withValues(alpha: 0.35); // Sunrise warm
+          } else {
+            tintColor = const Color(0xFF5A2A3D).withValues(alpha: 0.55); // Sunset deep
+          }
+          blendMode = BlendMode.overlay;
+        } else {
+          // Day
+          tintColor = Colors.transparent;
+          blendMode = BlendMode.dst;
         }
 
         return Stack(
@@ -67,8 +75,8 @@ class ProceduralWindowWidget extends StatelessWidget {
             CustomPaint(
               size: Size.infinite,
               painter: _OverlayPainter(
-                lightLevel: lightLevel,
-                time: time,
+                blindsLevel: blindsLevel,
+                maxSunlight: maxSunlight,
               ),
             ),
           ],
@@ -79,21 +87,20 @@ class ProceduralWindowWidget extends StatelessWidget {
 }
 
 class _OverlayPainter extends CustomPainter {
-  final double lightLevel;
-  final DateTime time;
+  final double blindsLevel;
+  final double maxSunlight;
 
   _OverlayPainter({
-    required this.lightLevel,
-    required this.time,
+    required this.blindsLevel,
+    required this.maxSunlight,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final hour = time.hour;
-    final isNight = hour >= 18 || hour < 6;
+    final isNight = maxSunlight <= 0.0;
 
     // Draw stars at night
-    if (hour >= 20 || hour < 5) {
+    if (isNight) {
       final random = Random(42); 
       final starPaint = Paint()..color = Colors.white.withValues(alpha: 0.6);
       for (int i = 0; i < 50; i++) {
@@ -105,44 +112,48 @@ class _OverlayPainter extends CustomPainter {
       }
     }
 
-    // Window Blinds during the day
-    if (!isNight && lightLevel < 0.5) {
-      final blindPaint = Paint()..color = Colors.black.withValues(alpha: 0.8);
-      int blindsCount = 12;
-      double blindHeight = size.height / (blindsCount * 2);
+    // Window Blinds
+    if (blindsLevel > 0.0) {
+      final blindPaint = Paint()..color = Colors.black.withValues(alpha: 0.85);
+      const double frameTopOffset = 14.0; // Account for the window frame
+      const double slatHeight = 12.0;
+      const double gapHeight = 8.0;
+      const double step = slatHeight + gapHeight;
       
-      double blindCoverage = 1.0 - (lightLevel / 0.5).clamp(0.0, 1.0);
-      int visibleBlinds = (blindsCount * blindCoverage).ceil();
+      final double visualHeight = size.height - frameTopOffset;
+      final double coveredHeight = frameTopOffset + (visualHeight * blindsLevel);
       
-      for (int i = 0; i < visibleBlinds; i++) {
+      canvas.save();
+      canvas.clipRect(Rect.fromLTWH(0, frameTopOffset, size.width, coveredHeight - frameTopOffset));
+      
+      int totalSlats = (visualHeight / step).ceil();
+      for (int i = 0; i < totalSlats; i++) {
         canvas.drawRect(
-          Rect.fromLTWH(0, i * blindHeight * 2, size.width, blindHeight),
+          Rect.fromLTWH(0, frameTopOffset + i * step, size.width, slatHeight),
           blindPaint,
         );
       }
       
-      if (visibleBlinds > 0) {
-        double currentBottom = visibleBlinds * blindHeight * 2;
-        canvas.drawLine(
-          Offset(size.width * 0.9, 0),
-          Offset(size.width * 0.9, currentBottom + 20),
-          Paint()
-            ..color = Colors.black87
-            ..strokeWidth = 2,
-        );
-        canvas.drawCircle(
-          Offset(size.width * 0.9, currentBottom + 20),
-          4,
-          Paint()..color = Colors.black87,
-        );
-      }
+      canvas.restore();
+      
+      // Draw the string pull
+      canvas.drawLine(
+        Offset(size.width * 0.9, frameTopOffset),
+        Offset(size.width * 0.9, coveredHeight + 20),
+        Paint()
+          ..color = Colors.black87
+          ..strokeWidth = 2,
+      );
+      canvas.drawCircle(
+        Offset(size.width * 0.9, coveredHeight + 20),
+        6,
+        Paint()..color = Colors.black54,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _OverlayPainter oldDelegate) {
-    return oldDelegate.lightLevel != lightLevel ||
-           oldDelegate.time.minute != time.minute ||
-           oldDelegate.time.hour != time.hour;
+  bool shouldRepaint(_OverlayPainter oldDelegate) {
+    return oldDelegate.blindsLevel != blindsLevel || oldDelegate.maxSunlight != maxSunlight;
   }
 }

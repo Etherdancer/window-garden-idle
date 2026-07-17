@@ -1,4 +1,5 @@
 import '../models/species.dart';
+import '../models/buff.dart';
 
 const List<PlantSpecies> traditionalPlants = [
   PlantSpecies(
@@ -10,6 +11,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.6,
     lightNeed: 0.3,
     growthRate: 0.2,
+    pressedBuff: const PlantBuff(type: BuffType.resilience, value: 0.01),
     journalData: PlantJournalData(
       description: 'A deeply revered, incredibly slow-growing woodland plant native to the Appalachian mountains. Its fleshy root is highly prized globally for its profound adaptogenic, cooling, and balancing properties.',
       botanicalDetails: 'Unlike Asian Ginseng (which is fiercely "heating" and stimulating), American Ginseng is considered "cooling" and nourishing. It thrives exclusively in deep, old-growth hardwood forests on north-facing slopes, requiring 70% shade and up to 10 years to reach harvestable size.',
@@ -28,6 +30,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.3,
     lightNeed: 1.0,
     growthRate: 0.5,
+    pressedBuff: const PlantBuff(type: BuffType.lightAbsorption, value: 0.01),
     journalData: PlantJournalData(
       description: 'A striking, incredibly drought-tolerant shrub native to the deserts of Southern California. It features pale, silver-white leaves that are heavily coated in highly aromatic, sticky resins.',
       botanicalDetails: 'White sage evolved to survive brutal heat and zero water. The silvery-white color of the leaves acts as a mirror, actively reflecting the blistering desert sun away from the plant to prevent the internal water from boiling.',
@@ -46,6 +49,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.8,
     lightNeed: 0.7,
     growthRate: 0.6,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A hardy, creeping grass native to damp meadows in North America and Europe. It is deeply revered for its intensely sweet, vanilla-like fragrance that lasts for years after being harvested.',
       botanicalDetails: 'The incredible vanilla scent of Sweetgrass does not come from a flower, but from coumarin—a highly fragrant chemical compound hidden deep inside the long green blades. The scent actually becomes significantly stronger as the grass dries out and dies.',
@@ -64,6 +68,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.5,
     lightNeed: 0.6,
     growthRate: 0.4,
+    pressedBuff: const PlantBuff(type: BuffType.resilience, value: 0.01),
     journalData: PlantJournalData(
       description: 'A powerful, highly respected medicinal plant that grows exclusively in the high-altitude Rocky Mountains. Its dark, hairy root smells intensely like spicy celery and camphor.',
       botanicalDetails: 'Osha completely defies cultivation. Every attempt to grow it in a greenhouse or farm has failed; it will only grow wild in the specific, harsh, high-altitude alpine soil of the Rocky Mountains, making it highly susceptible to over-harvesting.',
@@ -82,6 +87,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.6,
     lightNeed: 0.7,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.growthSpeed, value: 0.01),
     journalData: PlantJournalData(
       description: 'A beautiful North American tree famous for having three entirely different leaf shapes on the exact same branch (oval, mitten, and three-lobed). Its thick taproot is the original flavor of Root Beer.',
       botanicalDetails: 'The root bark contains massive amounts of safrole, a volatile oil that smells exactly like old-fashioned root beer. The tree uses this powerful chemical to prevent fungus and rot in the damp forest soil.',
@@ -100,6 +106,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.7,
     lightNeed: 0.4,
     growthRate: 0.5,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A delicate, beautiful white spring ephemeral flower that blooms briefly in the forest understory. However, breaking the thick rhizome underground reveals a terrifying, bright-red sap that looks exactly like human blood.',
       botanicalDetails: 'The blood-red sap contains sanguinarine, a highly toxic alkaloid. It acts as a powerful escharotic, meaning it aggressively attacks and destroys living animal tissue, causing it to die and slough off.',
@@ -118,6 +125,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.9,
     lightNeed: 0.8,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A striking, creeping perennial that grows in massive mats in the damp, alkaline soils of the American Southwest. It produces cone-like white flowers and possesses a deeply pungent, spicy, camphor-like odor.',
       botanicalDetails: 'The thick, creeping rhizomes are packed with powerful antimicrobial and antifungal resins. It is remarkably similar in action to Goldenseal, actively tightening and healing severely inflamed, boggy mucous membranes.',
@@ -136,6 +144,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.6,
     lightNeed: 0.7,
     growthRate: 0.5,
+    pressedBuff: const PlantBuff(type: BuffType.resilience, value: 0.01),
     journalData: PlantJournalData(
       description: 'A large deciduous tree native to eastern North America. Its deeply furrowed bark hides an inner layer that, when mixed with water, creates a thick, slippery, gelatinous slime used to soothe severe throat and stomach inflammation.',
       botanicalDetails: 'The inner bark is composed of complex polysaccharides. When exposed to water, these sugars swell massively, creating "mucilage." This slime physically coats the raw, exposed nerve endings in a sore throat, instantly stopping the urge to cough.',
@@ -154,6 +163,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.7,
     lightNeed: 0.4,
     growthRate: 0.6,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A tall, elegant woodland plant that produces striking, towering wands of fluffy white flowers in the deep shade. Its dark, gnarled root is globally famous as a premier remedy for severe menopausal symptoms.',
       botanicalDetails: 'The root contains complex triterpene glycosides. Unlike Red Clover, Black Cohosh does not actually contain plant estrogens. Instead, it seems to actively bind to serotonin receptors in the human brain, drastically regulating the body\'s internal thermostat and stopping hot flashes.',
@@ -172,6 +182,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.6,
     lightNeed: 0.8,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.lightAbsorption, value: 0.01),
     journalData: PlantJournalData(
       description: 'A tough, evergreen shrub native to the southeastern United States. It is the ONLY known plant native to North America that naturally produces caffeine. It is closely related to South American Yerba Mate.',
       botanicalDetails: 'Despite its terrifying scientific name (Ilex vomitoria), the leaves of the plant absolutely do not make you vomit! The plant simply contains high levels of caffeine and theobromine, providing a smooth, jitter-free energy boost exactly like high-quality green tea.',
@@ -190,6 +201,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.8,
     lightNeed: 0.7,
     growthRate: 0.7,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A tall, hairy wetland plant famous for its unique leaves, which appear to have the stem growing directly through the center of them. It is one of the most intensely bitter herbs on earth, historically used to break severe fevers.',
       botanicalDetails: 'The plant contains eupatorin, a highly potent diaphoretic compound. When consumed as a hot tea, it actively forces the human body to sweat violently, breaking high fevers and triggering a massive immune response.',
@@ -208,6 +220,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.7,
     lightNeed: 0.3,
     growthRate: 0.5,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A striking woodland plant that emerges from the ground in the spring with a purple-blue tint, eventually producing beautiful, bright blue, berry-like seeds. It is a powerful uterine stimulant.',
       botanicalDetails: 'The root contains the alkaloid caulophylline, which actively causes smooth muscle tissue to contract. It is an extremely powerful oxytocic herb, meaning it acts similarly to the hormone oxytocin in the human body.',
@@ -226,6 +239,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.7,
     lightNeed: 0.3,
     growthRate: 0.4,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A small, deeply loved woodland plant that produces a single, raspberry-like red fruit. Digging up the plant reveals a brilliant, neon-yellow rhizome that is one of the most powerful natural antibiotics on earth.',
       botanicalDetails: 'The bright yellow color of the root comes entirely from berberine, an incredibly potent alkaloid. Berberine actively destroys the cell walls of harmful bacteria and parasites in the human digestive tract, making it a supreme cure for severe food poisoning and dysentery.',
@@ -244,6 +258,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.6,
     lightNeed: 0.6,
     growthRate: 0.8,
+    pressedBuff: const PlantBuff(type: BuffType.growthSpeed, value: 0.01),
     journalData: PlantJournalData(
       description: 'A twisting, climbing vine native to the damp woodlands of North America. Its twisted, woody underground rhizome was the secret key to one of the most important medical inventions of the 20th century.',
       botanicalDetails: 'The root contains diosgenin, a phytoestrogen. While the human body cannot convert diosgenin into human hormones directly, brilliant chemists in the 1950s discovered how to synthesize it in a lab, successfully creating the world\'s very first human birth control pill!',
@@ -262,6 +277,7 @@ const List<PlantSpecies> traditionalPlants = [
     waterNeed: 0.7,
     lightNeed: 0.4,
     growthRate: 0.6,
+    pressedBuff: const PlantBuff(type: BuffType.moistureRetention, value: 0.01),
     journalData: PlantJournalData(
       description: 'A massive, sprawling, dramatic woodland perennial that can grow up to 6 feet tall, producing enormous clusters of dark purple berries. Its massive, spicy root is a legendary lung tonic.',
       botanicalDetails: 'American Spikenard is closely related to Ginseng. Its massive roots secrete an incredibly strong, spicy, pine-and-anise scented resin that acts as a profound expectorant, actively thinning and forcing hardened mucus out of the lungs.',

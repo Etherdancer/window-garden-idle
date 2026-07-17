@@ -4,13 +4,83 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/product_ad.dart';
 import '../../state/plant_notifier.dart';
 
-class NativeAdWidget extends ConsumerWidget {
+class NativeAdWidget extends ConsumerStatefulWidget {
   final ProductAd ad;
 
   const NativeAdWidget({super.key, required this.ad});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NativeAdWidget> createState() => _NativeAdWidgetState();
+}
+
+class _NativeAdWidgetState extends ConsumerState<NativeAdWidget> with WidgetsBindingObserver {
+  bool _launchedAd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _launchedAd) {
+      _launchedAd = false;
+      // Resume simulation!
+      final notifier = ref.read(plantListProvider.notifier);
+      ref.read(gamePausedProvider.notifier).state = false;
+      notifier.resumeSimulation();
+    }
+  }
+
+  Future<void> _handleAdRedirect() async {
+    final notifier = ref.read(plantListProvider.notifier);
+    
+    // Pause the game clock before redirecting
+    ref.read(gamePausedProvider.notifier).state = true;
+    notifier.pauseSimulation();
+    setState(() {
+      _launchedAd = true;
+    });
+
+    final uri = Uri.parse(widget.ad.externalLink);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not launch product link.')),
+          );
+        }
+        _cleanupFailedRedirect();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error launching product link.')),
+        );
+      }
+      _cleanupFailedRedirect();
+    }
+  }
+
+  void _cleanupFailedRedirect() {
+    ref.read(gamePausedProvider.notifier).state = false;
+    ref.read(plantListProvider.notifier).resumeSimulation();
+    setState(() {
+      _launchedAd = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
       padding: const EdgeInsets.all(16),
@@ -86,7 +156,7 @@ class NativeAdWidget extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ad.title,
+                      widget.ad.title,
                       style: const TextStyle(
                         fontFamily: 'PlayfairDisplay',
                         fontSize: 16,
@@ -96,7 +166,7 @@ class NativeAdWidget extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      ad.description,
+                      widget.ad.description,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -134,7 +204,7 @@ class NativeAdWidget extends ConsumerWidget {
                 ),
               ),
               ElevatedButton(
-                onPressed: () => _handleAdRedirect(ref, context),
+                onPressed: _handleAdRedirect,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF5D7A68),
                   foregroundColor: Colors.white,
@@ -165,36 +235,5 @@ class NativeAdWidget extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _handleAdRedirect(WidgetRef ref, BuildContext context) async {
-    final notifier = ref.read(plantListProvider.notifier);
-    
-    // Pause the game clock before redirecting
-    ref.read(gamePausedProvider.notifier).state = true;
-    notifier.pauseSimulation();
-
-    final uri = Uri.parse(ad.externalLink);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not launch product link.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error launching product link.')),
-        );
-      }
-    } finally {
-      // Resume the game clock after returning
-      ref.read(gamePausedProvider.notifier).state = false;
-      notifier.resumeSimulation();
-    }
   }
 }

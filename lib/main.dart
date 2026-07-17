@@ -3,21 +3,29 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:firebase_core/firebase_core.dart';
 import 'services/storage_service.dart';
 import 'services/notification_service.dart';
 import 'services/audio_service.dart';
+import 'services/cloud_sync_service.dart';
 import 'state/garden_notifier.dart';
 import 'ui/main_game_screen.dart';
 import 'ui/welcome_screen.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   tz.initializeTimeZones();
 
-  // 1. Lock screen orientation to Portrait Mode only
+  // 1. Allow both Portrait and Landscape orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
   ]);
 
   // 2. Initialize Hive local database (registers both PlantAdapter & GardenAdapter)
@@ -115,10 +123,18 @@ class _RootScreenState extends ConsumerState<RootScreen> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final audioService = ref.read(audioServiceProvider);
+    final cloudSync = ref.read(cloudSyncServiceProvider);
+    
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
       audioService.pauseBackgroundMusic();
+      cloudSync.syncToCloud(ref.read(gardenListProvider));
     } else if (state == AppLifecycleState.resumed) {
       audioService.resumeBackgroundMusic();
+      cloudSync.syncFromCloud().then((gardens) {
+        if (gardens != null) {
+          ref.read(gardenListProvider.notifier).loadFromCloud(gardens);
+        }
+      });
     }
   }
 

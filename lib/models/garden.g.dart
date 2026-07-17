@@ -21,7 +21,7 @@ class GardenAdapter extends TypeAdapter<Garden> {
       locationId: fields[1] as String,
       plants: (fields[2] as List).cast<Plant>(),
       createdAt: fields[3] as DateTime,
-      lightLevel: fields[4] as double,
+      blindsLevel: fields[4] as double,
     );
   }
 
@@ -38,7 +38,7 @@ class GardenAdapter extends TypeAdapter<Garden> {
       ..writeByte(3)
       ..write(obj.createdAt)
       ..writeByte(4)
-      ..write(obj.lightLevel);
+      ..write(obj.blindsLevel);
   }
 
   @override

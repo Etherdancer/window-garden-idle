@@ -23,7 +23,7 @@ class ProductAd {
       title: 'Premium Aroid Soil Mix',
       description: 'Super chunky, well-draining soil mix designed specifically for Pothos, Monsteras, and Philodendrons to prevent root rot.',
       imageUrl: 'assets/images/aroid_soil.png',
-      externalLink: 'https://www.google.com/search?q=premium+aroid+soil+mix',
+      externalLink: 'https://windowgarden.net/shop/aroid-soil-mix?tag=wingarden-20',
       recommendedForSpecies: ['pothos', 'monstera', 'philodendron'],
     ),
     ProductAd(
@@ -31,7 +31,7 @@ class ProductAd {
       title: 'Brass Long-Spout Watering Can',
       description: 'Elegant copper-coated brass watering can with a long, thin neck for precise watering directly to the roots without wetting leaves.',
       imageUrl: 'assets/images/brass_can.png',
-      externalLink: 'https://www.google.com/search?q=brass+long+spout+watering+can',
+      externalLink: 'https://windowgarden.net/shop/brass-watering-can?tag=wingarden-20',
       recommendedForSpecies: ['pothos', 'boston_fern', 'snake_plant'],
     ),
     ProductAd(
@@ -39,7 +39,7 @@ class ProductAd {
       title: '3-in-1 Soil Moisture Meter',
       description: 'Instantly measure soil moisture levels. A must-have tool to prevent overwatering your drought-loving Snake Plants.',
       imageUrl: 'assets/images/moisture_meter.png',
-      externalLink: 'https://www.google.com/search?q=soil+moisture+meter',
+      externalLink: 'https://windowgarden.net/shop/moisture-meter?tag=wingarden-20',
       recommendedForSpecies: ['snake_plant', 'zz_plant', 'succulent'],
     ),
     ProductAd(
@@ -47,7 +47,7 @@ class ProductAd {
       title: 'Full Spectrum LED Grow Light',
       description: 'Provide optimal lighting for your indoor plants during winter months. Perfect for high-light species.',
       imageUrl: 'assets/images/grow_light.png',
-      externalLink: 'https://www.google.com/search?q=full+spectrum+led+grow+light',
+      externalLink: 'https://windowgarden.net/shop/led-grow-light?tag=wingarden-20',
       recommendedForSpecies: ['ficus', 'succulent', 'cactus'],
     ),
   ];

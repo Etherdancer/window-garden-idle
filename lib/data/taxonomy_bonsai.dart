@@ -1,0 +1,62 @@
+import '../models/species.dart';
+import '../models/buff.dart';
+
+const List<PlantSpecies> bonsaiPlants = [
+  PlantSpecies(
+    id: 'bonsai_1',
+    name: 'Shimpaku Juniper Bonsai',
+    scientificName: 'Juniperus chinensis',
+    family: 'Cupressaceae',
+    category: 'The Masters of Time',
+    waterNeed: 0.4,
+    lightNeed: 0.9,
+    growthRate: 0.1,
+    pressedBuff: const PlantBuff(type: BuffType.resilience, value: 0.10),
+    journalData: PlantJournalData(
+      description: 'A classic, iconic bonsai tree featuring swirling, dramatically twisting deadwood (jin and shari) contrasted against tight pads of vibrant green foliage.',
+      botanicalDetails: 'To create the illusion of an ancient, weather-beaten tree on a mountain cliff, bonsai masters intentionally strip the bark off sections of the trunk and bleach the dead wood white using lime sulfur, perfectly preserving it against rot.',
+      curiosities: 'The oldest known living bonsai tree in the world is a Ficus retusa housed in Italy, estimated to be over 1,000 years old. However, several Juniper bonsai in Japan have been documented continuously in the same family for over 800 years.',
+      imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Bonsai_Juniperus_chinensis_Shimpaku.jpg/320px-Bonsai_Juniperus_chinensis_Shimpaku.jpg',
+      useTitle: 'Outdoor Dormancy Required',
+      useBody: 'Despite being kept in small pots, Junipers are not indoor houseplants. They are temperate trees that require freezing winter dormancy to survive. If kept indoors year-round, they will slowly exhaust their energy reserves and die.',
+    ),
+  ),
+  PlantSpecies(
+    id: 'bonsai_2',
+    name: 'Japanese Maple Bonsai',
+    scientificName: 'Acer palmatum',
+    family: 'Sapindaceae',
+    category: 'The Masters of Time',
+    waterNeed: 0.6,
+    lightNeed: 0.7,
+    growthRate: 0.3,
+    pressedBuff: const PlantBuff(type: BuffType.growthSpeed, value: 0.05),
+    journalData: PlantJournalData(
+      description: 'Prized for its incredibly delicate, star-shaped leaves that erupt in brilliant, fiery shades of red, orange, and gold during the autumn.',
+      botanicalDetails: 'Bonsai artists perform a technique called "defoliation" in mid-summer, literally cutting off every single leaf. The tree panics and grows a second flush of leaves, but because the energy is split, the new leaves grow back half the size, creating perfect miniature scale.',
+      curiosities: 'Japanese maples are highly sensitive to hard water. If watered heavily with tap water, the salts and minerals will accumulate at the very delicate tips of the leaves, causing them to burn and turn crispy brown.',
+      imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Acer_palmatum_bonsai.jpg/320px-Acer_palmatum_bonsai.jpg',
+      useTitle: 'Wind Protection',
+      useBody: 'Because they are planted in extremely shallow pots, strong winds will rapidly strip the moisture from the delicate leaves before the roots can replace it. They must be sheltered from heavy summer winds.',
+    ),
+  ),
+  PlantSpecies(
+    id: 'bonsai_3',
+    name: 'Ginseng Ficus Bonsai',
+    scientificName: 'Ficus retusa',
+    family: 'Moraceae',
+    category: 'The Masters of Time',
+    waterNeed: 0.5,
+    lightNeed: 0.6,
+    growthRate: 0.5,
+    pressedBuff: const PlantBuff(type: BuffType.resilience, value: 0.08),
+    journalData: PlantJournalData(
+      description: 'The ultimate beginner bonsai. It features massively swollen, bulbous, twisting aerial roots that look like human legs or ginger roots, topped with dense, shiny green leaves.',
+      botanicalDetails: 'The swollen base is an evolutionary adaptation to survive long droughts in its native Southeast Asian habitat. The thick roots store massive amounts of water, allowing the tree to survive severe neglect.',
+      curiosities: 'In the wild, these fig trees grow massive aerial roots that drop from the branches to the ground, eventually forming impenetrable thickets. This is the exact same species of tree that has completely engulfed the famous ancient ruins of Angkor Wat in Cambodia.',
+      imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Ficus_retusa_bonsai_1.jpg/320px-Ficus_retusa_bonsai_1.jpg',
+      useTitle: 'Indoor Forgiving Care',
+      useBody: 'Unlike Junipers and Maples, the Ficus is a tropical tree. It can absolutely be grown indoors year-round on a sunny windowsill, making it the perfect gateway into the art of bonsai.',
+    ),
+  ),
+];

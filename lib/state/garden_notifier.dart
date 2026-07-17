@@ -63,7 +63,7 @@ class GardenNotifier extends StateNotifier<List<Garden>> {
       locationId: locationId,
       plants: const [],
       createdAt: DateTime.now(),
-      lightLevel: 0.5,
+      blindsLevel: 0.0,
     );
     state = [...state, newGarden];
     await _storage.saveGardens(state);
@@ -117,9 +117,9 @@ class GardenNotifier extends StateNotifier<List<Garden>> {
     await _storage.saveGardens(state);
   }
 
-  Future<void> updateGardenLightLevel(String gardenId, double lightLevel) async {
+  Future<void> updateGardenBlindsLevel(String gardenId, double blindsLevel) async {
     state = state.map((g) {
-      return g.id == gardenId ? g.copyWith(lightLevel: lightLevel.clamp(0.0, 1.0)) : g;
+      return g.id == gardenId ? g.copyWith(blindsLevel: blindsLevel.clamp(0.0, 1.0)) : g;
     }).toList();
     await _storage.saveGardens(state);
   }
@@ -135,6 +135,20 @@ class GardenNotifier extends StateNotifier<List<Garden>> {
   Future<void> updateAllGardens(List<Garden> gardens) async {
     state = gardens;
     await _storage.saveGardens(state);
+  }
+
+  Future<void> loadFromCloud(List<Garden> gardens) async {
+    state = gardens;
+    await _storage.saveGardens(state);
+    if (state.isNotEmpty) {
+      final currentId = _ref.read(activeGardenIdProvider);
+      if (!state.any((g) => g.id == currentId)) {
+        setActiveGarden(state.first.id);
+      }
+    } else {
+      _ref.read(activeGardenIdProvider.notifier).state = null;
+      await _storage.saveActiveGardenId('');
+    }
   }
 
   // ---- Monetisation pause/resume -------------------------------------------

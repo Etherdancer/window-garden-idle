@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // garden_location.dart is created by the locations agent
 import '../models/garden_location.dart';
-// garden_notifier.dart is created by the state agent
 import '../state/garden_notifier.dart';
+import '../services/auth_service.dart';
+import '../services/cloud_sync_service.dart';
 import 'main_game_screen.dart';
 
 class WelcomeScreen extends ConsumerStatefulWidget {
@@ -18,6 +19,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
+  bool _isLoggingIn = false;
 
   @override
   void initState() {
@@ -50,6 +52,26 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
       context,
       MaterialPageRoute(builder: (_) => const MainGameScreen()),
     );
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoggingIn = true);
+    final authService = ref.read(authServiceProvider);
+    final userCredential = await authService.signInWithGoogle();
+    if (userCredential != null) {
+      final cloudSync = ref.read(cloudSyncServiceProvider);
+      final gardens = await cloudSync.syncFromCloud();
+      if (gardens != null && gardens.isNotEmpty) {
+        await ref.read(gardenListProvider.notifier).loadFromCloud(gardens);
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainGameScreen()),
+        );
+        return;
+      }
+    }
+    setState(() => _isLoggingIn = false);
   }
 
   @override
@@ -91,6 +113,28 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                           color: Color(0xFF8A8279),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      if (_isLoggingIn)
+                        const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5D7A68)),
+                        )
+                      else
+                        ElevatedButton.icon(
+                          onPressed: _loginWithGoogle,
+                          icon: const Icon(Icons.cloud_sync, size: 18),
+                          label: const Text('Load Cloud Save'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE8ECD7),
+                            foregroundColor: const Color(0xFF324831),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -101,8 +145,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 4),
                     gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 220,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
                       childAspectRatio: 0.78,
@@ -167,13 +211,12 @@ class _LocationCard extends StatelessWidget {
             ),
 
             // Window image
-            SizedBox(
-              height: 90,
+            Expanded(
               child: Image.asset(
                 location.windowImagePath,
                 fit: BoxFit.cover,
+                width: double.infinity,
                 errorBuilder: (_, __, ___) => Container(
-                  height: 90,
                   color: location.accentPrimary.withValues(alpha: 0.28),
                   child: Center(
                     child: Text(
@@ -186,8 +229,7 @@ class _LocationCard extends StatelessWidget {
             ),
 
             // Card body
-            Expanded(
-              child: Padding(
+            Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 child: Column(
@@ -224,7 +266,6 @@ class _LocationCard extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
           ],
         ),
       ),

@@ -15,25 +15,29 @@ const _kAllCategory = 'all';
 
 const _kCategories = [
   _CategoryInfo(id: _kAllCategory, label: 'All', emoji: ''),
-  _CategoryInfo(id: 'Culinary Herbs', label: 'Herbs', emoji: '🌿'),
-  _CategoryInfo(id: 'Medicinal & Supplement Herbs', label: 'Medicinal', emoji: '💊'),
-  _CategoryInfo(id: 'Superfoods & Adaptogens', label: 'Superfoods', emoji: '⚡'),
-  _CategoryInfo(id: 'Tea & Beverage Plants', label: 'Tea', emoji: '🍵'),
-  _CategoryInfo(id: 'Spice Plants', label: 'Spice', emoji: '🌶️'),
-  _CategoryInfo(id: 'Edible Flowers & Garnish', label: 'Flowers', emoji: '🌸'),
-  _CategoryInfo(id: 'Windowsill Edibles', label: 'Veg', emoji: '🥬'),
-  _CategoryInfo(id: 'Traditional Medicine & Wellness', label: 'Traditional', emoji: '🧘'),
+  _CategoryInfo(id: 'The Tropical Canopy', label: 'Tropical', emoji: '🌴'),
+  _CategoryInfo(id: 'The Arid Survivors', label: 'Arid', emoji: '🏜️'),
+  _CategoryInfo(id: 'The Balcony Bloomers', label: 'Bloomers', emoji: '🌺'),
+  _CategoryInfo(id: 'The Epiphytes', label: 'Epiphytes', emoji: '🦋'),
+  _CategoryInfo(id: 'The Shade Dwellers', label: 'Ferns', emoji: '🌿'),
+  _CategoryInfo(id: 'Micro-Farmers', label: 'Edibles', emoji: '🧑‍🌾'),
+  _CategoryInfo(id: 'The Bog Hunters', label: 'Carnivorous', emoji: '🪰'),
+  _CategoryInfo(id: 'The Masters of Time', label: 'Bonsai', emoji: '🕰️'),
+  _CategoryInfo(id: 'The Water Bowls', label: 'Aquatic', emoji: '🪷'),
+  _CategoryInfo(id: 'The Spring Sleepers', label: 'Bulbs', emoji: '🧅'),
 ];
 
 const _kCategoryColors = <String, Color>{
-  'Culinary Herbs': Color(0xFF5D7A68),
-  'Medicinal & Supplement Herbs': Color(0xFF7A5D7A),
-  'Superfoods & Adaptogens': Color(0xFFD67C52),
-  'Tea & Beverage Plants': Color(0xFF5D7A6E),
-  'Spice Plants': Color(0xFFA65D5D),
-  'Edible Flowers & Garnish': Color(0xFFA65D8A),
-  'Windowsill Edibles': Color(0xFF6E8A5D),
-  'Traditional Medicine & Wellness': Color(0xFF8A7A5D),
+  'The Tropical Canopy': Color(0xFF4A7C59),
+  'The Arid Survivors': Color(0xFFC38B57),
+  'The Balcony Bloomers': Color(0xFFD96C8B),
+  'The Epiphytes': Color(0xFF6E8A5D),
+  'The Shade Dwellers': Color(0xFF324831),
+  'Micro-Farmers': Color(0xFF8A7A5D),
+  'The Bog Hunters': Color(0xFF7A5D7A),
+  'The Masters of Time': Color(0xFF5D7A68),
+  'The Water Bowls': Color(0xFF5D7A99),
+  'The Spring Sleepers': Color(0xFFD4B34C),
 };
 
 Color _colorForCategory(String category) =>

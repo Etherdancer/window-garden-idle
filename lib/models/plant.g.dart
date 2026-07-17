@@ -27,13 +27,14 @@ class PlantAdapter extends TypeAdapter<Plant> {
       dustLevel: fields[7] as double,
       lastCalculatedTime: fields[8] as DateTime,
       unlockedFactIds: (fields[9] as List).cast<String>(),
+      photosynthesisEnergy: fields[10] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, Plant obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +54,9 @@ class PlantAdapter extends TypeAdapter<Plant> {
       ..writeByte(8)
       ..write(obj.lastCalculatedTime)
       ..writeByte(9)
-      ..write(obj.unlockedFactIds);
+      ..write(obj.unlockedFactIds)
+      ..writeByte(10)
+      ..write(obj.photosynthesisEnergy);
   }
 
   @override

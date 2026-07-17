@@ -1,19 +1,36 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/audio_service.dart';
+import '../models/weather.dart';
+import '../services/weather_service.dart';
+import 'package:window_garden_idle/state/player_profile_notifier.dart';
+import '../models/buff.dart';
 import '../models/plant.dart';
 // garden_location.dart is created by the locations agent
 import '../models/garden_location.dart';
+import '../models/garden.dart';
 import '../models/species.dart';
 import '../state/plant_notifier.dart';
 import '../services/pwa_install.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import '../services/sunlight_service.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'journal_screen.dart';
 import 'welcome_screen.dart';
 import 'widgets/plant_visualizer.dart';
 import 'widgets/garden_switcher_sheet.dart';
 import 'widgets/add_plant_dialog.dart';
 import 'widgets/procedural_window.dart';
+import 'widgets/tutorial_dialog.dart';
+import 'widgets/radio_widget.dart';
+import 'widgets/companion_widget.dart';
+import 'widgets/weather_particles_widget.dart';
+import '../services/environment_service.dart';
+import 'widgets/modular_window_frame.dart';
 
 class MainGameScreen extends ConsumerStatefulWidget {
   const MainGameScreen({super.key});
@@ -26,11 +43,19 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
   String? _selectedPlantId;
   bool _checkedFirstLaunch = false;
 
+  // Watering Mode State
+  Timer? _wateringTimer;
+  bool _isWateringAnimationPlaying = false;
+  DateTime _lastWipeSoundTime = DateTime.fromMillisecondsSinceEpoch(0);
+  WeatherState? _lastWeather;
+
   @override
   void initState() {
     super.initState();
     // If no gardens exist on first build, redirect to WelcomeScreen
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkTutorial();
+
       if (_checkedFirstLaunch) return;
       _checkedFirstLaunch = true;
       final gardens = ref.read(gardenListProvider);
@@ -41,6 +66,14 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
         );
       }
     });
+  }
+
+  Future<void> _checkTutorial() async {
+    final storage = ref.read(storageServiceProvider);
+    if (!storage.getHasSeenTutorial()) {
+      await TutorialDialog.show(context);
+      await storage.saveHasSeenTutorial(true);
+    }
   }
 
   @override
@@ -67,7 +100,18 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
     }
 
     final plants = activeGarden?.plants ?? <Plant>[];
-    final lightLevel = activeGarden?.lightLevel ?? 0.5;
+    final blindsLevel = activeGarden?.blindsLevel ?? 0.0;
+
+    final weather = activeGarden?.currentWeather;
+    if (weather != _lastWeather) {
+      _lastWeather = weather;
+      if (weather != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted)
+            ref.read(audioServiceProvider).playAmbientSound(weather.name);
+        });
+      }
+    }
 
     // Resolve selected plant
     final selectedPlant = plants.isEmpty
@@ -106,44 +150,211 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
                   ],
                 ),
               )
-            : Column(
-                children: [
-                  // 1. Header & Navigation to Journal
-                  _buildHeader(context, location),
-
-                  // 2. Windowsill and Sunlight rays
-                  Expanded(
-                    flex: 5,
-                    child: _buildWindowsillView(
+            : OrientationBuilder(
+                builder: (context, orientation) {
+                  if (orientation == Orientation.landscape) {
+                    return _buildLandscapeLayout(
                       context,
                       activeGarden,
                       location,
                       plants,
                       selectedPlant,
-                      lightLevel,
+                      blindsLevel,
+                    );
+                  }
+                  return _buildPortraitLayout(
+                    context,
+                    activeGarden,
+                    location,
+                    plants,
+                    selectedPlant,
+                    blindsLevel,
+                  );
+                },
+              ),
+      ),
+    );
+  }
+
+  Widget _buildPortraitLayout(
+    BuildContext context,
+    dynamic activeGarden,
+    GardenLocation? location,
+    List<Plant> plants,
+    Plant? selectedPlant,
+    double blindsLevel,
+  ) {
+    return Column(
+      children: [
+        // 1. Header & Navigation to Journal
+        _buildHeader(context, location),
+
+        // 2. Windowsill and Sunlight rays
+        Expanded(
+          flex: 5,
+          child: Stack(
+            children: [
+              _buildWindowsillView(
+                context,
+                activeGarden,
+                location,
+                plants,
+                selectedPlant,
+                blindsLevel,
+              ),
+              // Time of day lighting overlay
+              IgnorePointer(
+                child: AnimatedContainer(
+                  duration: const Duration(seconds: 1),
+                  color: EnvironmentService.getAmbientLighting(DateTime.now()),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // 3. Control Panel
+        Expanded(
+          flex: 4,
+          child: _buildControlPanel(
+            context,
+            activeGarden,
+            location,
+            selectedPlant,
+            blindsLevel,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLandscapeLayout(
+    BuildContext context,
+    dynamic activeGarden,
+    GardenLocation? location,
+    List<Plant> plants,
+    Plant? selectedPlant,
+    double blindsLevel,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Ideal aspect ratio of our window frame images is roughly 1.32 (1024/775)
+        double idealLeftWidth = constraints.maxHeight * 1.32;
+
+        // Bound the width so we always have room for controls (at least 30%), and at least 50% for visuals
+        double leftWidth = idealLeftWidth;
+        if (leftWidth > constraints.maxWidth * 0.70) {
+          leftWidth = constraints.maxWidth * 0.70;
+        }
+        if (leftWidth < constraints.maxWidth * 0.50) {
+          leftWidth = constraints.maxWidth * 0.50;
+        }
+
+        return Row(
+          children: [
+            // Left side: Windowsill View
+            SizedBox(
+              width: leftWidth,
+              child: Stack(
+                children: [
+                  _buildWindowsillView(
+                    context,
+                    activeGarden,
+                    location,
+                    plants,
+                    selectedPlant,
+                    blindsLevel,
+                  ),
+                  // Time of day lighting overlay
+                  IgnorePointer(
+                    child: AnimatedContainer(
+                      duration: const Duration(seconds: 1),
+                      color: EnvironmentService.getAmbientLighting(
+                        DateTime.now(),
+                      ),
                     ),
                   ),
+                ],
+              ),
+            ),
 
-                  // 3. Control Panel
+            // Right side: Header and Control Panel
+            Expanded(
+              child: Column(
+                children: [
+                  _buildHeader(context, location),
                   Expanded(
-                    flex: 4,
                     child: _buildControlPanel(
                       context,
                       activeGarden,
                       location,
                       selectedPlant,
-                      lightLevel,
+                      blindsLevel,
                     ),
                   ),
                 ],
               ),
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Header
   // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildWeatherBadge(WeatherState weather) {
+    IconData icon;
+    Color color;
+    String tooltip;
+    switch (weather) {
+      case WeatherState.sunny:
+        icon = Icons.wb_sunny_rounded;
+        color = const Color(0xFFE67E22);
+        tooltip = 'Sunny: Bright light, fast evaporation';
+        break;
+      case WeatherState.cloudy:
+        icon = Icons.cloud_rounded;
+        color = const Color(0xFF7F8C8D);
+        tooltip = 'Cloudy: Moderate light';
+        break;
+      case WeatherState.rainy:
+        icon = Icons.umbrella_rounded;
+        color = const Color(0xFF4A90E2);
+        tooltip = 'Rainy: Dim light, high humidity';
+        break;
+    }
+
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3), width: 1.0),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              WeatherService.getWeatherLabel(weather),
+              style: TextStyle(
+                fontFamily: 'OpenSans',
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildHeader(BuildContext context, GardenLocation? location) {
     return Padding(
@@ -182,6 +393,12 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
                             size: 18,
                             color: Color(0xFF8A8279),
                           ),
+                          if (location != null) ...[
+                            const SizedBox(width: 8),
+                            _buildWeatherBadge(
+                              WeatherService.getWeatherForTime(DateTime.now()),
+                            ),
+                          ],
                         ],
                       ),
                       Text(
@@ -200,7 +417,10 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
           ),
 
           // Install App Button
-          if (isPwaInstallable() || (kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS)))
+          if (isPwaInstallable() ||
+              (kIsWeb &&
+                  (defaultTargetPlatform == TargetPlatform.iOS ||
+                      defaultTargetPlatform == TargetPlatform.macOS)))
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: IconButton.filled(
@@ -214,7 +434,9 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('Install Window Garden'),
-                        content: const Text('To install this app on your device, tap the Share icon and select "Add to Home Screen".'),
+                        content: const Text(
+                          'To install this app on your device, tap the Share icon and select "Add to Home Screen".',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
@@ -271,42 +493,34 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
     GardenLocation? location,
     List<Plant> plants,
     Plant? selectedPlant,
-    double lightLevel,
+    double blindsLevel,
   ) {
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
         // Procedural window view
-        if (location != null)
+        if (location != null) ...[
           Positioned.fill(
             child: ProceduralWindowWidget(
               location: location,
-              lightLevel: lightLevel,
+              blindsLevel: blindsLevel,
+            ),
+          ),
+          const Positioned.fill(child: WeatherParticlesWidget()),
+        ],
+
+        // Layer 1: Window Frame (Modular)
+        if (location != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ModularWindowFrame(
+                beamImagePath: 'assets/images/frames/${location.id}_beam.png',
+                benchImagePath: 'assets/images/frames/${location.id}_bench.png',
+              ),
             ),
           ),
 
-        // The Windowsill Shelf
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 48,
-            decoration: const BoxDecoration(
-              color: Color(0xFF8D7156),
-              border: Border(
-                top: BorderSide(color: Color(0xFF755C44), width: 4),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                  offset: Offset(0, -4),
-                ),
-              ],
-            ),
-          ),
-        ),
+        // Layer 1.5: The Bench (removed, drawn within image asset)
 
         // Row of 4 plant slots
         Positioned(
@@ -324,6 +538,7 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
                   final isSelected = plant.id == selectedPlant?.id;
                   return GestureDetector(
                     onTap: () {
+                      if (_isWateringAnimationPlaying) return;
                       HapticFeedback.lightImpact();
                       setState(() {
                         _selectedPlantId = plant.id;
@@ -339,123 +554,121 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
             ),
           ),
         ),
+
+        // Joyful Props
+        const Positioned(bottom: 30, right: 20, child: RadioWidget()),
+
+        const Positioned(bottom: 120, left: 30, child: CompanionWidget()),
       ],
     );
   }
 
   Widget _buildPlantPot(Plant plant, bool isSelected) {
-    Color soilColor = const Color(0xFFC2B6A3);
-    if (plant.currentWaterLevel > 50.0) {
-      soilColor = const Color(0xFF5A4432);
-    } else if (plant.currentWaterLevel > 20.0) {
-      soilColor = const Color(0xFF8B715C);
-    }
-
     final species = plant.species;
-    final maxWater = species?.maxWaterTolerance ?? 80.0;
-    final isOverwatered = plant.currentWaterLevel > maxWater;
+    final idealMoisture = species?.idealMoisture ?? 50.0;
+    final window = species?.moistureToleranceWindow ?? 25.0;
+    final isOverwatered = plant.currentWaterLevel > (idealMoisture + window);
 
-    // Slightly smaller pots for 4-plant layout (base 90 was 100)
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        PlantVisualizerWidget(
-          plant: plant,
-          size: 90.0 + (plant.growthStage * 7),
-        ),
-        Container(
-          width: 68,
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFE88A60), // Light terracotta highlight
-                Color(0xFFD67C52), // Base terracotta
-                Color(0xFFA05532), // Dark shadow
-              ],
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(16),
-              bottomRight: Radius.circular(16),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(2, 6),
-              ),
-              if (isSelected)
-                const BoxShadow(
-                  color: Color(0xFF5D7A68),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                ),
-            ],
-            border: Border.all(
-              color: isSelected ? const Color(0xFF5D7A68) : const Color(0xFFA05532),
-              width: isSelected ? 2.5 : 1.0,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              // Pot Rim
-              Container(
+        Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            // Ground shadow
+            Positioned(
+              bottom: 2,
+              child: Container(
+                width: 50,
                 height: 8,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFFF09A72),
-                      Color(0xFFD67C52),
-                    ],
-                  ),
-                  border: const Border(
-                    bottom: BorderSide(color: Color(0xFFA05532), width: 1.5),
-                  ),
+                  color: Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(25),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 2,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-              ),
-              // Soil Level
-              Container(
-                height: 10,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: soilColor,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(6),
-                    bottomRight: Radius.circular(6),
-                  ),
-                  // Inner shadow effect for the pot depth
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.6),
-                      blurRadius: 4,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: isOverwatered
-                    ? Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+                    if (plant.growthStage >= 5)
+                      const BoxShadow(
+                        color: Color(0xFFFFD700),
+                        blurRadius: 15,
+                        spreadRadius: 4,
                       )
-                    : null,
+                    else
+                      const BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 6,
+                        spreadRadius: 2,
+                      ),
+                  ],
+                ),
               ),
-              const Expanded(child: SizedBox()),
-            ],
+            ),
+
+            // The high-fidelity Pot Sprite
+            if (plant.growthStage >= 5)
+              ColorFiltered(
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFFFFF0A0),
+                  BlendMode.modulate,
+                ),
+                child: Image.asset(
+                  'assets/images/pots/terracotta.png',
+                  width: 80,
+                  height: 60,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _buildFallbackPot(isSelected, true),
+                ),
+              )
+            else
+              Image.asset(
+                'assets/images/pots/terracotta.png',
+                width: 80,
+                height: 60,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildFallbackPot(isSelected, false),
+              ),
+
+            // The Plant (placed so its base overlaps the pot's rim)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 35),
+              child: PlantVisualizerWidget(
+                plant: plant,
+                size: 90.0 + (plant.growthStage * 7),
+              ),
+            ),
+
+            // Watering Can Overlay
+            if (_isWateringAnimationPlaying && _selectedPlantId == plant.id)
+              const Positioned(
+                top: -50,
+                right: -20,
+                child: WateringCanAnimation(),
+              ),
+          ],
+        ),
+
+        const SizedBox(height: 6),
+
+        // Progress Bar (Water Level) below the planter
+        Container(
+          width: 50,
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.black26,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.black12, width: 0.5),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: (plant.currentWaterLevel / 100.0).clamp(0.0, 1.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isOverwatered
+                    ? Colors.redAccent
+                    : const Color(0xFF4FA0E8),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 5),
@@ -464,8 +677,7 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
           style: TextStyle(
             fontFamily: 'OpenSans',
             fontSize: 11,
-            fontWeight:
-                isSelected ? FontWeight.bold : FontWeight.normal,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             color: isSelected
                 ? const Color(0xFF2C2520)
                 : const Color(0xFF8A8279),
@@ -488,30 +700,60 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
         children: [
           // Empty visualizer space placeholder
           const SizedBox(height: 90),
-          // Dashed-border empty pot
-          Container(
-            width: 64,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFD67C52).withValues(alpha: 0.12),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(14),
-                bottomRight: Radius.circular(14),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Ground shadow
+              Positioned(
+                bottom: 2,
+                child: Container(
+                  width: 50,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(
+                      alpha: 0.25,
+                    ), // lighter shadow for empty transparent pot
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 6,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              border: Border.all(
-                color: const Color(0xFFD67C52).withValues(alpha: 0.5),
-                width: 1.5,
-                // Note: Flutter doesn't natively support dashed borders
-                // Using lower-opacity border for the "empty" appearance
+              Opacity(
+                opacity: 0.4,
+                child: Image.asset(
+                  'assets/images/pots/terracotta.png',
+                  width: 80,
+                  height: 60,
+                  fit: BoxFit.contain,
+                ),
               ),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.add,
-                color: Color(0xFFD67C52),
-                size: 22,
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Color(0xFFD67C52),
+                  size: 20,
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(height: 5),
           Text(
@@ -533,218 +775,535 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
 
   Widget _buildControlPanel(
     BuildContext context,
-    dynamic activeGarden,
+    Garden? garden,
     GardenLocation? location,
     Plant? plant,
-    double currentLightLevel,
+    double blindsLevel,
   ) {
-    if (plant == null) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+    if (plant == null || garden == null || location == null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Your garden is empty',
+                  style: TextStyle(
+                    fontFamily: 'PlayfairDisplay',
+                    fontSize: 18,
+                    color: Color(0xFF2C2520),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tap an empty pot to plant your first seed.',
+                  style: TextStyle(
+                    fontFamily: 'OpenSans',
+                    fontSize: 13,
+                    color: Color(0xFF8A8279),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Your garden is empty',
-              style: TextStyle(
-                fontFamily: 'PlayfairDisplay',
-                fontSize: 18,
-                color: Color(0xFF2C2520),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Tap an empty pot to plant your first seed.',
-              style: TextStyle(
-                fontFamily: 'OpenSans',
-                fontSize: 13,
-                color: Color(0xFF8A8279),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       );
     }
 
     final species = plant.species;
-    final maxWater = species?.maxWaterTolerance ?? 80.0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, -2),
+    // Calculate current actual sunlight
+    final locationTz = tz.getLocation(location.timeZone);
+    final time = tz.TZDateTime.now(locationTz);
+    final maxSunlight = SunlightService.calculateSunlight(
+      time.toUtc(),
+      location.latitude,
+      location.longitude,
+    );
+
+    final weather = WeatherService.getWeatherForTime(time);
+    double weatherLightMultiplier = 1.0;
+    if (weather == WeatherState.cloudy) {
+      weatherLightMultiplier = 0.4;
+    } else if (weather == WeatherState.rainy) {
+      weatherLightMultiplier = 0.1;
+    }
+
+    final actualLight =
+        maxSunlight * (1.0 - blindsLevel) * weatherLightMultiplier;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.4),
+              width: 1.5,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Selected Plant header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Selected Plant header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    plant.nickname,
-                    style: const TextStyle(
-                      fontFamily: 'PlayfairDisplay',
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2C2520),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plant.nickname,
+                        style: const TextStyle(
+                          fontFamily: 'PlayfairDisplay',
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2C2520),
+                        ),
+                      ),
+                      Text(
+                        species?.scientificName ?? '',
+                        style: const TextStyle(
+                          fontFamily: 'PlayfairDisplay',
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                          color: Color(0xFF8A8279),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildBotanistWhisper(plant, species, actualLight),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFECE6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Stage ${plant.growthStage}/5',
+                          style: const TextStyle(
+                            fontFamily: 'OpenSans',
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6E645A),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD95D5D).withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          color: const Color(0xFFD95D5D),
+                          tooltip: 'Uproot Plant',
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: const Color(0xFFF8F5F0),
+                                title: const Text(
+                                  'Uproot Plant?',
+                                  style: TextStyle(
+                                    fontFamily: 'PlayfairDisplay',
+                                  ),
+                                ),
+                                content: const Text(
+                                  'Are you sure you want to discard this plant? This cannot be undone.',
+                                  style: TextStyle(fontFamily: 'OpenSans'),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        color: Color(0xFF6E645A),
+                                      ),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFD95D5D),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      setState(() {
+                                        _selectedPlantId = null;
+                                      });
+                                      ref
+                                          .read(plantListProvider.notifier)
+                                          .uprootPlant(plant.id);
+                                    },
+                                    child: const Text(
+                                      'Uproot',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Status bars
+              _buildHealthBar(plant),
+              _buildMoistureBar(plant, species),
+              if (species != null) ...[
+                _buildSunlightMeter(actualLight, species),
+                _buildPhotosynthesisBar(plant),
+              ],
+
+              const Spacer(),
+
+              // Action buttons
+              if (plant.growthStage == 5)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _showHarvestDialog(context, plant);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF86A873), Color(0xFF628B48)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.menu_book, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'Harvest & Press',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  Text(
-                    species?.scientificName ?? '',
-                    style: const TextStyle(
-                      fontFamily: 'PlayfairDisplay',
-                      fontSize: 13,
-                      fontStyle: FontStyle.italic,
-                      color: Color(0xFF8A8279),
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  GestureDetector(
+                    onLongPressStart: (_) => _startWatering(plant),
+                    onLongPressEnd: (_) => _stopWatering(),
+                    onTapDown: (_) => _startWatering(plant),
+                    onTapUp: (_) => _stopWatering(),
+                    onTapCancel: () => _stopWatering(),
+                    child: _buildActionButton(
+                      icon: Icons.water_drop,
+                      label: 'Hold to Water',
+                      color: location.accentPrimary,
+                    ),
+                  ),
+                  GestureDetector(
+                    onPanUpdate: (details) {
+                      if (details.delta.dx.abs() > 5 ||
+                          details.delta.dy.abs() > 5) {
+                        ref
+                            .read(plantListProvider.notifier)
+                            .cleanDust(plant.id);
+
+                        final now = DateTime.now();
+                        if (now.difference(_lastWipeSoundTime).inMilliseconds >
+                            250) {
+                          _lastWipeSoundTime = now;
+                          ref.read(audioServiceProvider).playSfx('wipe');
+                        }
+                      }
+                    },
+                    child: _buildActionButton(
+                      icon: Icons.clean_hands,
+                      label: 'Wipe Dust',
+                      color: location.accentSecondary,
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+
+              // Window Blinds
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFECE6),
+                  color: const Color(0xFFF8F5F0),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE4DCD3)),
                 ),
-                child: Text(
-                  'Stage ${plant.growthStage}/5',
-                  style: const TextStyle(
-                    fontFamily: 'OpenSans',
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6E645A),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Status bars
-          _buildStatusBar(
-              'Health', plant.health / 100.0, const Color(0xFFD95D5D)),
-          _buildMoistureBar(plant, species),
-
-          _buildStatusBar(
-            'Photosynthesis',
-            1.0 - (plant.dustLevel / 100.0),
-            const Color(0xFFC7B35D),
-            warningText:
-                plant.dustLevel > 40.0 ? 'Dusty' : null,
-          ),
-
-          const Spacer(),
-
-          // Action buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  ref
-                      .read(plantListProvider.notifier)
-                      .waterPlant(plant.id);
-                },
-                child: _buildActionButton(
-                  icon: Icons.water_drop,
-                  label: 'Water Plant',
-                  color: location?.accentPrimary ?? const Color(0xFF5D84A6),
-                ),
-              ),
-              GestureDetector(
-                onPanUpdate: (details) {
-                  if (details.delta.dx.abs() > 5 ||
-                      details.delta.dy.abs() > 5) {
-                    ref
-                        .read(plantListProvider.notifier)
-                        .cleanDust(plant.id);
-                  }
-                },
-                child: _buildActionButton(
-                  icon: Icons.clean_hands,
-                  label: 'Wipe Dust',
-                  color: location?.accentSecondary ?? const Color(0xFF8A8279),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.wb_shade,
+                      color: Color(0xFF6E645A),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Window Blinds',
+                      style: TextStyle(
+                        fontFamily: 'PlayfairDisplay',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2C2520),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 12),
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: const Color(0xFF6E645A),
+                            inactiveTrackColor: const Color(0xFFE4DCD3),
+                            thumbColor: const Color(0xFF2C2520),
+                            overlayColor: const Color(
+                              0xFF6E645A,
+                            ).withValues(alpha: 0.2),
+                            trackHeight: 6,
+                          ),
+                          child: Slider(
+                            value: blindsLevel,
+                            onChanged: (val) {
+                              ref
+                                  .read(plantListProvider.notifier)
+                                  .updateBlindsLevel(
+                                    double.parse(val.toStringAsFixed(2)),
+                                  );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+        ),
+      ),
+    );
+  }
 
-          // Light slider (per-garden)
-          Row(
-            children: [
-              const Icon(Icons.wb_sunny, color: Colors.amber, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Light Level',
-                style: TextStyle(
-                  fontFamily: 'OpenSans',
-                  fontSize: 13,
-                  color: Color(0xFF6E645A),
-                ),
+  Widget _buildBotanistWhisper(
+    Plant plant,
+    PlantSpecies? species,
+    double actualLight,
+  ) {
+    if (species == null) return const SizedBox.shrink();
+
+    String message = "Thriving beautifully in these conditions.";
+    IconData icon = Icons.favorite;
+    Color color = const Color(0xFF5D7A68);
+
+    final moistureDelta = (plant.currentWaterLevel - species.idealMoisture)
+        .abs();
+    final moistureEfficiency =
+        1.0 -
+        (moistureDelta / (species.moistureToleranceWindow * 2.0)).clamp(
+          0.0,
+          1.0,
+        );
+    final lightDeviation = (actualLight - species.idealLightLevel).abs();
+
+    if (plant.dustLevel > 40.0) {
+      message =
+          "My leaves are covered in dust. I can't breathe or photosynthesize well.";
+      icon = Icons.blur_on;
+      color = const Color(0xFFA09B96);
+    } else if (moistureEfficiency < 0.7) {
+      icon = Icons.water_drop;
+      if (plant.currentWaterLevel < species.idealMoisture) {
+        message = "The soil is getting too dry. I feel parched.";
+        color = const Color(0xFFD67C52);
+      } else {
+        message = "The soil is completely waterlogged. My roots can't breathe!";
+        color = const Color(0xFFD95D5D);
+      }
+    } else if (actualLight > species.idealLightLevel + 0.4) {
+      message = "The light is much too harsh! I'm getting sunburned.";
+      icon = Icons.wb_sunny;
+      color = const Color(0xFFD95D5D);
+    } else if (actualLight < 0.2) {
+      if (plant.photosynthesisEnergy > 50) {
+        message =
+            "Resting peacefully. I've stored enough energy today to grow through the night!";
+        icon = Icons.bedtime;
+        color = const Color(0xFF5D7A68);
+      } else {
+        message =
+            "Sleeping for now. Hopefully tomorrow is a bit sunnier so I can recharge.";
+        icon = Icons.bedtime;
+        color = const Color(0xFF6E645A);
+      }
+    } else if (lightDeviation > 0.4 && actualLight < species.idealLightLevel) {
+      message =
+          "It's a bit too dim right now. I could use more sunlight to grow quickly.";
+      icon = Icons.cloud;
+      color = const Color(0xFF6E645A);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontFamily: 'OpenSans',
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: color,
               ),
-              Expanded(
-                child: Slider(
-                  value: currentLightLevel,
-                  activeColor: Colors.amber,
-                  inactiveColor: const Color(0xFFE4DCD3),
-                  onChanged: (val) {
-                    if (activeGarden != null) {
-                      ref
-                          .read(gardenListProvider.notifier)
-                          .updateGardenLightLevel(
-                              activeGarden.id as String, val);
-                    }
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Watering Panel
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _startWatering(Plant plant) {
+    HapticFeedback.lightImpact();
+    setState(() => _isWateringAnimationPlaying = true);
+    ref.read(audioServiceProvider).playSfx('water');
+
+    double currentLevel = plant.currentWaterLevel;
+
+    _wateringTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (currentLevel >= 100.0) {
+        _stopWatering();
+        return;
+      }
+      currentLevel += 3.0;
+      if (currentLevel > 100.0) currentLevel = 100.0;
+
+      HapticFeedback.selectionClick();
+      ref
+          .read(plantListProvider.notifier)
+          .waterPlant(plant.id, targetLevel: currentLevel);
+    });
+  }
+
+  void _stopWatering() {
+    _wateringTimer?.cancel();
+    _wateringTimer = null;
+    setState(() => _isWateringAnimationPlaying = false);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Shared helpers
   // ─────────────────────────────────────────────────────────────────────────
 
-  Widget _buildStatusBar(String label, double val, Color color,
-      {String? warningText}) {
+  Widget _buildFallbackPot(bool isSelected, bool isGolden) {
+    return Container(
+      width: 80,
+      height: 60,
+      decoration: BoxDecoration(
+        color: isGolden ? const Color(0xFFD4AF37) : const Color(0xFFB5651D),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+      ),
+    );
+  }
+
+  Widget _buildGaugeBar({
+    required String title,
+    required String statusLabel,
+    required Color statusColor,
+    required double currentValue,
+    required Gradient trackGradient,
+    double? targetValue,
+    String? subtitle,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -752,119 +1311,373 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                label,
+                title,
                 style: const TextStyle(
-                    fontFamily: 'OpenSans',
-                    fontSize: 11,
-                    color: Color(0xFF8A8279)),
+                  fontFamily: 'OpenSans',
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2C2520),
+                ),
               ),
               Text(
-                warningText ?? '${(val * 100).toInt()}%',
+                statusLabel,
                 style: TextStyle(
                   fontFamily: 'OpenSans',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: warningText != null
-                      ? const Color(0xFFD95D5D)
-                      : const Color(0xFF6E645A),
+                  color: statusColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 3),
-          LinearProgressIndicator(
-            value: val,
-            color: color,
-            backgroundColor: const Color(0xFFEFECE6),
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(4),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final trackWidth = constraints.maxWidth;
+              if (trackWidth == 0) return const SizedBox.shrink();
+
+              return Container(
+                height: 24,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: trackGradient,
+                ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    if (targetValue != null)
+                      Positioned(
+                        left: (trackWidth * targetValue.clamp(0.0, 1.0)) - 2,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 4,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    Positioned(
+                      left: (trackWidth * currentValue.clamp(0.0, 1.0)) - 10,
+                      top: 2,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F5F0),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: statusColor, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontFamily: 'OpenSans',
+                fontSize: 10,
+                color: Color(0xFF8A8279),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
+  Widget _buildHealthBar(Plant plant) {
+    final health = plant.health / 100.0;
+    final statusColor = health > 0.5
+        ? const Color(0xFF5D7A68)
+        : const Color(0xFFD95D5D);
+    final label = '${(health * 100).toInt()}%';
+
+    return _buildGaugeBar(
+      title: 'Health',
+      statusLabel: label,
+      statusColor: statusColor,
+      currentValue: health,
+      trackGradient: const LinearGradient(
+        colors: [
+          Color(0xFFD95D5D), // Red
+          Color(0xFFE5C07B), // Yellow
+          Color(0xFF5D7A68), // Green
+        ],
+        stops: [0.0, 0.5, 1.0],
+      ),
+      targetValue: null,
+    );
+  }
+
   Widget _buildMoistureBar(Plant plant, PlantSpecies? species) {
-    // Determine safe range based on the plant's unique water need
     final double idealMoisture = (species?.waterNeed ?? 0.6) * 100.0;
-    // Don't be too strict: safe range is ±25% of the ideal moisture
     final double safeMin = (idealMoisture - 25.0).clamp(0.0, 100.0);
     final double safeMax = (idealMoisture + 25.0).clamp(0.0, 100.0);
-    
+
     final val = plant.currentWaterLevel;
     final bool isSafe = val >= safeMin && val <= safeMax;
-    
-    String? warningText;
-    if (val < safeMin) warningText = 'Too Dry';
-    if (val > safeMax) warningText = 'Saturated';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Moisture',
-                style: TextStyle(
-                    fontFamily: 'OpenSans',
-                    fontSize: 11,
-                    color: Color(0xFF8A8279)),
-              ),
-              Text(
-                warningText ?? '${val.toInt()}% (Safe)',
-                style: TextStyle(
-                  fontFamily: 'OpenSans',
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isSafe
-                      ? const Color(0xFF5D7A68) // Green if safe
-                      : const Color(0xFFD95D5D), // Red if not
-                ),
-              ),
-            ],
+    String statusLabel = '${val.toInt()}% (Safe)';
+    if (val < safeMin) statusLabel = 'Too Dry';
+    if (val > safeMax) statusLabel = 'Saturated';
+
+    final statusColor = isSafe
+        ? const Color(0xFF5D7A68)
+        : const Color(0xFFD95D5D);
+
+    return _buildGaugeBar(
+      title: 'Moisture',
+      statusLabel: statusLabel,
+      statusColor: statusColor,
+      currentValue: val / 100.0,
+      targetValue: idealMoisture / 100.0,
+      trackGradient: LinearGradient(
+        colors: const [
+          Color(0xFFD95D5D), // Red
+          Color(0xFF5D7A68), // Green
+          Color(0xFFD95D5D), // Red
+        ],
+        stops: [0.0, idealMoisture / 100.0, 1.0],
+      ),
+    );
+  }
+
+  Widget _buildSunlightMeter(double actualLight, PlantSpecies species) {
+    final idealLight = species.idealLightLevel;
+    final diff = (actualLight - idealLight).abs();
+
+    String labelText;
+    Color statusColor;
+    if (diff <= 0.2) {
+      labelText = "Perfect Lighting";
+      statusColor = const Color(0xFF5D7A68); // Green
+    } else if (actualLight < idealLight) {
+      labelText = "Too Dim";
+      statusColor = const Color(0xFFD95D5D); // Red
+    } else {
+      labelText = "Too Bright";
+      statusColor = const Color(0xFFD95D5D); // Red
+    }
+
+    final safeIdeal = idealLight.clamp(0.05, 0.95);
+
+    // Calculate end colors based on tolerance.
+    // If the diff at the ends (0.0 or 1.0) is within 0.2 (tolerance), it stays green.
+    // Otherwise it fades to red.
+    final diffLeft = idealLight - 0.0;
+    Color leftColor = const Color(0xFFD95D5D);
+    if (diffLeft <= 0.2) {
+      leftColor = const Color(0xFF5D7A68);
+    } else if (diffLeft < 0.4) {
+      leftColor = Color.lerp(
+        const Color(0xFF5D7A68),
+        const Color(0xFFD95D5D),
+        (diffLeft - 0.2) / 0.2,
+      )!;
+    }
+
+    final diffRight = 1.0 - idealLight;
+    Color rightColor = const Color(0xFFD95D5D);
+    if (diffRight <= 0.2) {
+      rightColor = const Color(0xFF5D7A68);
+    } else if (diffRight < 0.4) {
+      rightColor = Color.lerp(
+        const Color(0xFF5D7A68),
+        const Color(0xFFD95D5D),
+        (diffRight - 0.2) / 0.2,
+      )!;
+    }
+
+    return _buildGaugeBar(
+      title: 'Light Level',
+      statusLabel: labelText,
+      statusColor: statusColor,
+      currentValue: actualLight,
+      targetValue: idealLight,
+      trackGradient: LinearGradient(
+        colors: [
+          leftColor,
+          const Color(0xFF5D7A68), // Green (Perfect at ideal)
+          rightColor,
+        ],
+        stops: [0.0, safeIdeal, 1.0],
+      ),
+    );
+  }
+
+  Widget _buildPhotosynthesisBar(Plant plant) {
+    final energy = plant.photosynthesisEnergy;
+    final fraction = (energy / 100.0).clamp(0.0, 1.0);
+    final isLow = energy < 10.0;
+
+    return _buildGaugeBar(
+      title: 'Light Energy',
+      statusLabel: isLow ? 'Low!' : '${energy.toInt()}%',
+      statusColor: isLow ? const Color(0xFFD95D5D) : const Color(0xFF5D7A68),
+      currentValue: fraction,
+      targetValue: null,
+      trackGradient: const LinearGradient(
+        colors: [
+          Color(0xFFE4DCD3), // Empty
+          Color(0xFFE5C07B), // Yellow
+        ],
+        stops: [0.0, 1.0],
+      ),
+      subtitle: 'Stores sunlight during day for steady growth',
+    );
+  }
+
+  void _showHarvestDialog(BuildContext context, Plant plant) {
+    final species = plant.species;
+    if (species == null) return;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-          const SizedBox(height: 3),
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFD95D5D).withValues(alpha: 0.2), // Red (Too dry)
-                  const Color(0xFFD95D5D).withValues(alpha: 0.2),
-                  const Color(0xFF5D7A68).withValues(alpha: 0.25), // Green (Safe)
-                  const Color(0xFF5D7A68).withValues(alpha: 0.25),
-                  const Color(0xFFD95D5D).withValues(alpha: 0.2), // Red (Too wet)
-                  const Color(0xFFD95D5D).withValues(alpha: 0.2),
-                ],
-                stops: [
-                  0.0,
-                  safeMin / 100.0,
-                  safeMin / 100.0,
-                  safeMax / 100.0,
-                  safeMax / 100.0,
-                  1.0,
-                ],
-              ),
-            ),
-            child: Stack(
+          backgroundColor: const Color(0xFFF8F5F0),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                FractionallySizedBox(
-                  widthFactor: val / 100.0,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSafe ? const Color(0xFF5D7A68) : const Color(0xFFD95D5D),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                const Icon(
+                  Icons.auto_awesome,
+                  color: Color(0xFFD4AF37),
+                  size: 48,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Harvest ${plant.nickname}?',
+                  style: const TextStyle(
+                    fontFamily: 'PlayfairDisplay',
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C3E2D),
                   ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Press a leaf into your Botanist Journal to immortalize it forever.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF4A554A),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8ECD7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.stars, color: Color(0xFF628B48)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          species.pressedBuff.description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF324831),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Color(0xFF6E645A),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF86A873),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      onPressed: () {
+                        HapticFeedback.heavyImpact();
+                        Navigator.pop(dialogContext);
+                        _performHarvest(plant);
+                      },
+                      child: const Text(
+                        'Press Leaf',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          )
-        ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _performHarvest(Plant plant) {
+    if (plant.species == null) return;
+
+    ref.read(audioServiceProvider).playSfx('press');
+
+    // Add to journal
+    ref.read(playerProfileProvider.notifier).pressPlant(plant.species!.id);
+
+    // Remove plant
+    ref.read(plantListProvider.notifier).uprootPlant(plant.id);
+
+    // Show success snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Pressed ${plant.nickname} into your Journal!'),
+        backgroundColor: const Color(0xFF628B48),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        action: SnackBarAction(
+          label: 'View Journal',
+          textColor: Colors.white,
+          onPressed: () {
+            // Navigator to journal could go here
+          },
+        ),
       ),
     );
   }
@@ -898,6 +1711,99 @@ class _MainGameScreenState extends ConsumerState<MainGameScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Watering Can Animation
+// ─────────────────────────────────────────────────────────────────────────
+
+class WateringCanAnimation extends StatefulWidget {
+  const WateringCanAnimation({super.key});
+
+  @override
+  State<WateringCanAnimation> createState() => _WateringCanAnimationState();
+}
+
+class _WateringCanAnimationState extends State<WateringCanAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Slide in, tilt, tilt back, slide out
+        double slideX = 0;
+        double slideY = 0;
+        double rotation = 0;
+
+        final t = _controller.value;
+        if (t < 0.2) {
+          // Slide in from top right
+          slideX = (1.0 - (t / 0.2)) * 50;
+          slideY = (1.0 - (t / 0.2)) * -50;
+        } else if (t < 0.4) {
+          // Tilt
+          rotation = ((t - 0.2) / 0.2) * -0.6; // tilt left
+        } else if (t < 0.7) {
+          // Hold tilt (pouring)
+          rotation = -0.6;
+        } else if (t < 0.8) {
+          // Tilt back
+          rotation = -0.6 * (1.0 - ((t - 0.7) / 0.1));
+        } else {
+          // Slide out
+          slideX = ((t - 0.8) / 0.2) * 50;
+          slideY = ((t - 0.8) / 0.2) * -50;
+        }
+
+        return Transform.translate(
+          offset: Offset(slideX, slideY),
+          child: Transform.rotate(
+            angle: rotation,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Image.asset(
+                  'assets/images/pots/watering_can.png',
+                  width: 80,
+                  height: 60,
+                  fit: BoxFit.contain,
+                ),
+                if (t > 0.35 && t < 0.75)
+                  Positioned(
+                    left: -10,
+                    bottom: -20,
+                    child: Container(
+                      width: 4,
+                      height: 20,
+                      color: Colors.lightBlueAccent.withValues(alpha: 0.6),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

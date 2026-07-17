@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+enum WindowFrameType { traditional, modern, stone }
+
 class GardenLocation {
   final String id;
   final String name;
@@ -11,6 +13,9 @@ class GardenLocation {
   final Color surfaceColor;
   final String emoji;
   final String timeZone;
+  final double latitude;
+  final double longitude;
+  final WindowFrameType frameType;
 
   const GardenLocation({
     required this.id,
@@ -23,6 +28,9 @@ class GardenLocation {
     required this.surfaceColor,
     required this.emoji,
     required this.timeZone,
+    required this.latitude,
+    required this.longitude,
+    this.frameType = WindowFrameType.traditional,
   });
 
   static const List<GardenLocation> registry = [
@@ -38,6 +46,9 @@ class GardenLocation {
       surfaceColor: Color(0xFF2C2C3E),
       emoji: '🌸',
       timeZone: 'Asia/Tokyo',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'kyoto',
@@ -50,6 +61,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFF4F1EA),
       emoji: '⛩️',
       timeZone: 'Asia/Tokyo',
+      latitude: 35.0116,
+      longitude: 135.7681,
     ),
     GardenLocation(
       id: 'seoul',
@@ -62,6 +75,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFF8F9FA),
       emoji: '🏯',
       timeZone: 'Asia/Seoul',
+      latitude: 37.5665,
+      longitude: 126.9780,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'bali',
@@ -74,6 +90,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFF5F5DC),
       emoji: '🌴',
       timeZone: 'Asia/Makassar',
+      latitude: -8.4095,
+      longitude: 115.1889,
     ),
     GardenLocation(
       id: 'chiang_mai',
@@ -86,6 +104,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFF8DC),
       emoji: '🏮',
       timeZone: 'Asia/Bangkok',
+      latitude: 18.7953,
+      longitude: 98.9620,
     ),
     GardenLocation(
       id: 'hanoi',
@@ -98,6 +118,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFFDF5E6),
       emoji: '🛵',
       timeZone: 'Asia/Ho_Chi_Minh',
+      latitude: 21.0285,
+      longitude: 105.8542,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'jaipur',
@@ -110,6 +133,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFFAEBD7),
       emoji: '🛕',
       timeZone: 'Asia/Kolkata',
+      latitude: 26.9124,
+      longitude: 75.7873,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'melbourne',
@@ -122,6 +148,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFE0E0E0),
       emoji: '☕',
       timeZone: 'Australia/Melbourne',
+      latitude: -37.8136,
+      longitude: 144.9631,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'queenstown',
@@ -134,6 +163,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFFFFF),
       emoji: '🏔️',
       timeZone: 'Pacific/Auckland',
+      latitude: -45.0312,
+      longitude: 168.6626,
     ),
     // Europe
     GardenLocation(
@@ -147,6 +178,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFF8F4E6),
       emoji: '🥐',
       timeZone: 'Europe/Paris',
+      latitude: 48.8566,
+      longitude: 2.3522,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'santorini',
@@ -159,6 +193,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFF0F8FF),
       emoji: '🧿',
       timeZone: 'Europe/Athens',
+      latitude: 36.3932,
+      longitude: 25.4615,
     ),
     GardenLocation(
       id: 'amsterdam',
@@ -171,6 +207,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFF5DEB3),
       emoji: '🚲',
       timeZone: 'Europe/Amsterdam',
+      latitude: 52.3676,
+      longitude: 4.9041,
+      frameType: WindowFrameType.stone,
     ),
     GardenLocation(
       id: 'lisbon',
@@ -183,6 +222,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFFACD),
       emoji: '🚋',
       timeZone: 'Europe/Lisbon',
+      latitude: 38.7223,
+      longitude: -9.1393,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'tuscany',
@@ -195,6 +237,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFFDF5E6),
       emoji: '🍷',
       timeZone: 'Europe/Rome',
+      latitude: 43.7711,
+      longitude: 11.2486,
     ),
     GardenLocation(
       id: 'amalfi_coast',
@@ -207,6 +251,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFE0FFFF),
       emoji: '🍋',
       timeZone: 'Europe/Rome',
+      latitude: 40.6340,
+      longitude: 14.6027,
     ),
     GardenLocation(
       id: 'edinburgh',
@@ -219,6 +265,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFD3D3D3),
       emoji: '🏰',
       timeZone: 'Europe/London',
+      latitude: 55.9533,
+      longitude: -3.1883,
+      frameType: WindowFrameType.stone,
     ),
     GardenLocation(
       id: 'prague',
@@ -231,6 +280,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFF5F5DC),
       emoji: '🕰️',
       timeZone: 'Europe/Prague',
+      latitude: 50.0755,
+      longitude: 14.4378,
+      frameType: WindowFrameType.stone,
     ),
     GardenLocation(
       id: 'bergen',
@@ -243,6 +295,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFE6E6FA),
       emoji: '🛥️',
       timeZone: 'Europe/Oslo',
+      latitude: 60.3913,
+      longitude: 5.3221,
+      frameType: WindowFrameType.stone,
     ),
     GardenLocation(
       id: 'reykjavik',
@@ -255,6 +310,9 @@ class GardenLocation {
       surfaceColor: Color(0xFF191970),
       emoji: '🌌',
       timeZone: 'Atlantic/Reykjavik',
+      latitude: 64.1466,
+      longitude: -21.9426,
+      frameType: WindowFrameType.stone,
     ),
     GardenLocation(
       id: 'dubrovnik',
@@ -267,6 +325,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFF5EE),
       emoji: '🧱',
       timeZone: 'Europe/Zagreb',
+      latitude: 42.6507,
+      longitude: 18.0944,
+      frameType: WindowFrameType.stone,
     ),
     // Americas
     GardenLocation(
@@ -280,6 +341,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFF0F0F0),
       emoji: '🍎',
       timeZone: 'America/New_York',
+      latitude: 40.7128,
+      longitude: -74.0060,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'havana',
@@ -292,6 +356,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFFFE0),
       emoji: '🚗',
       timeZone: 'America/Havana',
+      latitude: 23.1136,
+      longitude: -82.3666,
+      frameType: WindowFrameType.stone,
     ),
     GardenLocation(
       id: 'buenos_aires',
@@ -304,6 +371,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFF5FFFA),
       emoji: '💃',
       timeZone: 'America/Argentina/Buenos_Aires',
+      latitude: -34.6037,
+      longitude: -58.3816,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'oaxaca',
@@ -316,6 +386,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFE4B5),
       emoji: '🌵',
       timeZone: 'America/Mexico_City',
+      latitude: 17.0732,
+      longitude: -96.7266,
     ),
     GardenLocation(
       id: 'medellin',
@@ -328,6 +400,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFE0EEE0),
       emoji: '🌺',
       timeZone: 'America/Bogota',
+      latitude: 6.2442,
+      longitude: -75.5812,
+      frameType: WindowFrameType.modern,
     ),
     GardenLocation(
       id: 'vancouver',
@@ -340,6 +415,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFF0FFFF),
       emoji: '🌲',
       timeZone: 'America/Vancouver',
+      latitude: 49.2827,
+      longitude: -123.1207,
     ),
     // Africa & Middle East
     GardenLocation(
@@ -353,6 +430,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFFDF5E6),
       emoji: '⛰️',
       timeZone: 'Africa/Johannesburg',
+      latitude: -33.9249,
+      longitude: 18.4241,
     ),
     GardenLocation(
       id: 'zanzibar',
@@ -365,6 +444,8 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFF0F5),
       emoji: '⛵',
       timeZone: 'Africa/Dar_es_Salaam',
+      latitude: -6.1659,
+      longitude: 39.2026,
     ),
     GardenLocation(
       id: 'marrakech',
@@ -377,6 +458,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFFAF0E6),
       emoji: '🕌',
       timeZone: 'Africa/Casablanca',
+      latitude: 31.6295,
+      longitude: -7.9811,
+      frameType: WindowFrameType.stone,
     ),
     GardenLocation(
       id: 'petra',
@@ -389,6 +473,9 @@ class GardenLocation {
       surfaceColor: Color(0xFFFFE4C4),
       emoji: '🏜️',
       timeZone: 'Asia/Amman',
+      latitude: 30.3285,
+      longitude: 35.4444,
+      frameType: WindowFrameType.stone,
     ),
   ];
 

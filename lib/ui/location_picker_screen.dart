@@ -58,8 +58,8 @@ class LocationPickerScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 8, vertical: 4),
                 gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                    const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 220,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   childAspectRatio: 0.78,
@@ -247,13 +247,13 @@ class _PickerLocationCard extends StatelessWidget {
                 ),
 
                 // Window image
-                SizedBox(
-                  height: 90,
+                Expanded(
                   child: Image.asset(
                     location.windowImagePath,
                     fit: BoxFit.cover,
+                    width: double.infinity,
                     errorBuilder: (_, __, ___) => Container(
-                      height: 90,
+                      width: double.infinity,
                       color: location.accentPrimary.withValues(alpha: 0.28),
                       child: Center(
                         child: Text(
@@ -266,12 +266,11 @@ class _PickerLocationCard extends StatelessWidget {
                 ),
 
                 // Card body
-                Expanded(
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
-                    child: Column(
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                  child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
@@ -305,7 +304,6 @@ class _PickerLocationCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                ),
               ],
             ),
           ),

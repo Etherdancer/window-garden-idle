@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../models/plant.dart';
 import '../../models/plant_visual_config.dart';
 
-class PlantVisualizerWidget extends StatelessWidget {
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
+
+class PlantVisualizerWidget extends StatefulWidget {
   final Plant plant;
   final double size;
 
@@ -14,33 +17,123 @@ class PlantVisualizerWidget extends StatelessWidget {
   });
 
   @override
+  State<PlantVisualizerWidget> createState() => _PlantVisualizerWidgetState();
+}
+
+class _PlantVisualizerWidgetState extends State<PlantVisualizerWidget> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _showParticles = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: 500.ms);
+  }
+
+  @override
+  void didUpdateWidget(PlantVisualizerWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Trigger animation if plant was watered significantly
+    if (widget.plant.currentWaterLevel > oldWidget.plant.currentWaterLevel + 2) {
+      _triggerInteraction();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _triggerInteraction() {
+    HapticFeedback.lightImpact();
+    _controller.forward(from: 0);
+    setState(() => _showParticles = true);
+    Future.delayed(1.seconds, () {
+      if (mounted) setState(() => _showParticles = false);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        clipBehavior: Clip.none,
-        children: [
-          // Data-Driven Parametric Plant Drawing
-          CustomPaint(
-            size: Size(size, size),
-            painter: ParametricPlantPainter(plant: plant),
-          ),
-          
-          // Dust overlay
-          if (plant.dustLevel > 0)
-            Opacity(
-              opacity: (plant.dustLevel / 100.0).clamp(0.0, 1.0) * 0.7,
-              child: CustomPaint(
-                size: Size(size, size),
-                painter: DustPainter(),
+    // Always attempt to load the generated 2D isometric pixel art sprite
+    bool hasSprite = true;
+    String spritePath = 'assets/images/plants/${widget.plant.speciesId}.png';
+
+    return GestureDetector(
+      onTap: _triggerInteraction,
+      behavior: HitTestBehavior.translucent,
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          clipBehavior: Clip.none,
+          children: [
+            if (hasSprite)
+              Image.asset(
+                spritePath,
+                width: widget.size,
+                height: widget.size,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => CustomPaint(
+                  size: Size(widget.size, widget.size),
+                  painter: ParametricPlantPainter(plant: widget.plant),
+                ),
+              )
+            else
+              // Fallback to Data-Driven Parametric Plant Drawing
+              CustomPaint(
+                size: Size(widget.size, widget.size),
+                painter: ParametricPlantPainter(plant: widget.plant),
               ),
-            ),
-        ],
+            
+            // Dust overlay
+            if (widget.plant.dustLevel > 0)
+              Opacity(
+                opacity: (widget.plant.dustLevel / 100.0).clamp(0.0, 1.0) * 0.7,
+                child: CustomPaint(
+                  size: Size(widget.size, widget.size),
+                  painter: DustPainter(),
+                ),
+              ),
+              
+            // Happy Particles Overlay
+            if (_showParticles)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: ParticlesPainter(seed: DateTime.now().millisecondsSinceEpoch),
+                ).animate().fadeIn(duration: 200.ms).moveY(begin: 10, end: -30, duration: 800.ms).fadeOut(delay: 500.ms),
+              ),
+          ],
+        ).animate(controller: _controller, autoPlay: false).shake(hz: 3, curve: Curves.easeOut, rotation: 0.05),
       ),
     );
   }
+}
+
+// ---------------------------------------------------------
+// Particles Painter (Hearts/Sparkles)
+// ---------------------------------------------------------
+class ParticlesPainter extends CustomPainter {
+  final int seed;
+  ParticlesPainter({required this.seed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = Random(seed);
+    final paint = Paint()..style = PaintingStyle.fill;
+    
+    for (int i = 0; i < 6; i++) {
+      paint.color = random.nextBool() ? const Color(0xFFFFB6C1) : const Color(0xFF87CEFA);
+      double dx = size.width * 0.2 + random.nextDouble() * size.width * 0.6;
+      double dy = size.height * 0.2 + random.nextDouble() * size.height * 0.4;
+      canvas.drawCircle(Offset(dx, dy), 3 + random.nextDouble() * 3, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ParticlesPainter oldDelegate) => false;
 }
 
 // ---------------------------------------------------------
