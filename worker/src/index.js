@@ -186,12 +186,21 @@ async function checkPlantsAndNotify(env) {
 
 export default {
   async scheduled(controller, env, ctx) {
-    ctx.waitUntil(checkPlantsAndNotify(env));
+    ctx.waitUntil(
+      checkPlantsAndNotify(env).catch(e => {
+        console.error("Scheduled task failed:", e.message, e.stack);
+      })
+    );
   },
   
   // Also expose a manual fetch handler so we can test the worker by visiting its URL
   async fetch(request, env, ctx) {
-    await checkPlantsAndNotify(env);
-    return new Response("Window Garden Notification Cron Executed Successfully.", { status: 200 });
+    try {
+      await checkPlantsAndNotify(env);
+      return new Response("Window Garden Notification Cron Executed Successfully.", { status: 200 });
+    } catch (e) {
+      console.error("Manual fetch failed:", e.message, e.stack);
+      return new Response("Error: " + e.message, { status: 500 });
+    }
   }
 };

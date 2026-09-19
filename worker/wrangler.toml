@@ -2,5 +2,5 @@ name = "window-garden-idle-notifications"
 main = "src/index.js"
 compatibility_date = "2023-12-01"
 
-[triggers]
-crons = ["*/30 * * * *"] # Run every 30 minutes
+# [triggers]
+# crons = ["*/30 * * * *"] # Run every 30 minutes

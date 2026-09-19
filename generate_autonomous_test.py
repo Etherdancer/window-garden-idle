@@ -11,7 +11,7 @@ from rembg import remove
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OUTPUTS_DIR = r"C:\Fooocus\Fooocus_win64_2-5-0\Fooocus\outputs"
-SPRITES_DIR = os.path.join(OUTPUTS_DIR, "Sprites")
+SPRITES_DIR = r"c:\Users\Tomek\.gemini\antigravity\scratch\window-garden-idle\assets\generated_sprites\plants"
 
 if not os.path.exists(SPRITES_DIR):
     os.makedirs(SPRITES_DIR)
@@ -83,8 +83,7 @@ def process_sprite(input_image_path, out_path):
         return False
 
 def run():
-    with open("all_plants.json", "r") as f:
-        plants = json.load(f)
+    plants = ["Venus Flytrap", "Aloe Vera", "African Violet"]
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -162,10 +161,12 @@ def run():
                     
                     print(f"[{key}] LLava checking raw image for art direction...")
                     art_director_prompt = (
-                        f"You are checking an AI generated image of a plant. "
-                        f"Your ONLY job is to detect unwanted artifacts like pots, planters, vases, ground dirt, watermarks, or text. "
-                        f"Answer ONLY 'yes' if the image is just a plant/foliage with NONE of those bad elements. "
-                        f"Answer 'no' if you see a pot, a vase, text, a watermark, or ground dirt."
+                        f"You are the Art Director for a cozy, 2D isometric plant growing game. "
+                        f"Analyze this image. Does it look exactly like: '{desc}'? "
+                        f"Does it have a beautiful, cohesive watercolor/ink style? "
+                        f"Are there ANY unwanted elements like pots, planters, vases, dirt mounds, backgrounds, watermarks, or text? "
+                        f"Answer ONLY 'yes' if it perfectly matches the plant description and has zero unwanted elements. "
+                        f"Answer 'no' if there is a pot, if it looks ugly, or if it doesn't match the description."
                     )
                     raw_check = check_with_llava(raw_img, art_director_prompt)
                     print(f"[{key}] LLaVA raw check: {raw_check}")
