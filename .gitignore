@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Scratch, backups & AI generator artifacts
+*.bak
+*.tmp
+fooocus_*
+api_dump*
+debug_*.png
+temp_*.py
+generation_progress.json
+
