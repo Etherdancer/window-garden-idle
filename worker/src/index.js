@@ -106,28 +106,17 @@ async function checkPlantsAndNotify(env) {
     const doc = result.document;
     const docName = doc.name; // Full path e.g. projects/window-garden-82313/databases/(default)/documents/saves/UID
     const fields = doc.fields;
-    if (!fields || !fields.fcmToken || !fields.gardens) continue;
+    if (!fields || !fields.fcmToken) continue;
     
     const fcmToken = fields.fcmToken.stringValue;
-    const gardensStr = fields.gardens.stringValue;
     
-    let needsWater = false;
-    let isFullyGrown = false;
-    
+    // The app schedules next_notification_time for the moment a plant is *predicted* to
+    // dry out or finish growing, and records which in next_notification_kind. The stored
+    // plant values are from the last sync (before that moment), so re-checking them here
+    // (water < 20, stage === 5) almost never matched and reminders were not sent.
+    const kind = fields.next_notification_kind?.stringValue;
+
     try {
-      const gardensArray = JSON.parse(gardensStr);
-      for (const garden of gardensArray) {
-        if (!garden.plants) continue;
-        for (const plant of garden.plants) {
-          if (plant.currentWaterLevel !== undefined && plant.currentWaterLevel < 20) {
-            needsWater = true;
-          }
-          if (plant.growthStage === 5 && plant.growthProgress >= 99) {
-            isFullyGrown = true;
-          }
-        }
-      }
-      
       const sendPush = async (title, body) => {
         const payload = {
           message: {
@@ -148,19 +137,18 @@ async function checkPlantsAndNotify(env) {
         else console.error("FCM Send failed:", await res.text());
       };
       
-      let sentAny = false;
-      if (needsWater) {
-        await sendPush("A gentle reminder 💧", "Your little green friend is feeling parched. A gentle splash of water would make its day.");
-        sentAny = true;
-      }
-      if (isFullyGrown) {
+      if (kind === 'grown') {
         await sendPush("A new leaf has blossomed ✨", "Your plant is fully grown. It's the perfect time to press a memory into your Botanist Journal.");
-        sentAny = true;
+      } else if (kind === 'water') {
+        await sendPush("A gentle reminder 💧", "Your little green friend is feeling parched. A gentle splash of water would make its day.");
+      } else {
+        // Saves written by older app versions have no kind.
+        await sendPush("Your garden misses you 🌿", "Your plants may need some attention. Come take a look at your window garden.");
       }
       
-      // 2. Clear the next_notification_time to prevent spam
-      if (sentAny) {
-        // Set it to year 3000 to prevent re-triggering until the user opens the app and re-syncs
+      // 2. Push the next check far into the future until the app re-syncs. This also
+      // applies when nothing was sent; otherwise the document matched on every run.
+      {
         const patchUrl = `https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=next_notification_time`;
         await fetch(patchUrl, {
           method: 'PATCH',
@@ -193,14 +181,36 @@ export default {
     );
   },
   
-  // Also expose a manual fetch handler so we can test the worker by visiting its URL
+  // Manual trigger for testing. It sends real notifications to every due user, so it is
+  // disabled unless MANUAL_TRIGGER_TOKEN is set and the request presents it.
   async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    if (request.method !== 'POST' || url.pathname !== '/run') {
+      return new Response('Not found', { status: 404 });
+    }
+    const expected = env.MANUAL_TRIGGER_TOKEN;
+    const auth = request.headers.get('Authorization') || '';
+    if (!expected || !(await timingSafeEqual(auth, `Bearer ${expected}`))) {
+      return new Response('Unauthorized', { status: 401 });
+    }
     try {
       await checkPlantsAndNotify(env);
-      return new Response("Window Garden Notification Cron Executed Successfully.", { status: 200 });
+      return new Response('Window Garden notification run completed.', { status: 200 });
     } catch (e) {
-      console.error("Manual fetch failed:", e.message, e.stack);
-      return new Response("Error: " + e.message, { status: 500 });
+      console.error('Manual run failed:', e.message, e.stack);
+      return new Response('Run failed; see worker logs.', { status: 500 });
     }
   }
 };
+
+async function timingSafeEqual(a, b) {
+  const enc = new TextEncoder();
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(a)),
+    crypto.subtle.digest('SHA-256', enc.encode(b)),
+  ]);
+  const va = new Uint8Array(ha), vb = new Uint8Array(hb);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}

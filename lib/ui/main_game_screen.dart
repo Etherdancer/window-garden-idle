@@ -7,7 +7,6 @@ import '../services/audio_service.dart';
 import '../models/weather.dart';
 import '../services/weather_service.dart';
 import 'package:window_garden_idle/state/player_profile_notifier.dart';
-import '../models/buff.dart';
 import '../models/plant.dart';
 // garden_location.dart is created by the locations agent
 import '../models/garden_location.dart';

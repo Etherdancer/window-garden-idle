@@ -244,7 +244,6 @@ class WindowFramePainter extends CustomPainter {
 
     // 3. Draw Stone Arch Frame (Extruding outwards)
     // We will draw individual stone blocks around the arch
-    final Paint blockPaint = Paint()..color = stoneBase;
     
     // Left Pillar
     final Rect leftPillar = Rect.fromLTWH(0, archTopY + archRadius, frameW, size.height - sillHeight - (archTopY + archRadius));

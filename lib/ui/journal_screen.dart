@@ -434,11 +434,11 @@ class _JournalTabView extends StatelessWidget {
                         isUnlocked: isStage2Unlocked,
                         lockedMessage: 'Grow this plant to Stage 2 to unlock its visual record.',
                         initiallyExpanded: false,
-                        content: s.journalData.imageUrl != null && s.journalData.imageUrl!.isNotEmpty
+                        content: s.journalData.imageUrl.isNotEmpty
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: Image.network(
-                                  s.journalData.imageUrl!,
+                                  s.journalData.imageUrl,
                                   width: double.infinity,
                                   height: 200,
                                   fit: BoxFit.cover,

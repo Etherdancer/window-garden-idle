@@ -13,6 +13,10 @@ class ModularWindowFrame extends StatelessWidget {
     this.scale = 1.0,
   });
 
+  /// Frame art is optional per location; draw nothing rather than an error box.
+  static Widget _missingImage(BuildContext context, Object error, StackTrace? stackTrace) =>
+      const SizedBox.shrink();
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -28,6 +32,7 @@ class ModularWindowFrame extends StatelessWidget {
             angle: math.pi / 2,
             child: Image.asset(
               beamImagePath,
+              errorBuilder: _missingImage,
               fit: BoxFit.cover,
               alignment: Alignment.centerLeft,
             ),
@@ -42,6 +47,7 @@ class ModularWindowFrame extends StatelessWidget {
           width: 80 * scale,
           child: Image.asset(
             beamImagePath,
+            errorBuilder: _missingImage,
             fit: BoxFit.cover,
             alignment: Alignment.centerLeft,
           ),
@@ -58,6 +64,7 @@ class ModularWindowFrame extends StatelessWidget {
             transform: Matrix4.rotationY(math.pi),
             child: Image.asset(
               beamImagePath,
+              errorBuilder: _missingImage,
               fit: BoxFit.cover,
               alignment: Alignment.centerLeft,
             ),
@@ -72,6 +79,7 @@ class ModularWindowFrame extends StatelessWidget {
           height: 200 * scale,
           child: Image.asset(
             benchImagePath,
+            errorBuilder: _missingImage,
             fit: BoxFit.fill,
           ),
         ),

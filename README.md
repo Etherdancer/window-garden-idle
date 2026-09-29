@@ -117,6 +117,38 @@ flutter build web --release
 
 ---
 
+## 🔔 Push Notification Worker
+
+`worker/` is a Cloudflare Worker that runs every 30 minutes. It finds saves whose
+`next_notification_time` has passed and sends the reminder recorded in
+`next_notification_kind` (`water` or `grown`) through FCM.
+
+```bash
+cd worker
+npx wrangler secret put FIREBASE_CLIENT_EMAIL
+npx wrangler secret put FIREBASE_PRIVATE_KEY
+npx wrangler secret put MANUAL_TRIGGER_TOKEN   # optional, enables POST /run
+npx wrangler deploy
+```
+
+Manual run (sends real notifications):
+`curl -X POST -H "Authorization: Bearer $TOKEN" https://<worker>.workers.dev/run`
+
+## 🔐 Firestore rules
+
+[`firestore.rules`](firestore.rules) contains suggested owner-only rules for
+`saves/{uid}`. Compare them with the rules deployed in the Firebase console before
+deploying.
+
+## 🧪 Quality checks
+
+```bash
+flutter analyze
+flutter test
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
+
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
