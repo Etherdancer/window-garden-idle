@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import '../models/garden.dart';
-import '../models/garden_location.dart';
 import 'time_manager.dart';
 
 final cloudSyncServiceProvider = Provider<CloudSyncService>((ref) {
@@ -34,6 +33,9 @@ class CloudSyncService {
       final data = gardens.map((g) => g.toMap()).toList();
       
       DateTime? nextNotificationTime;
+      // Why the notification is due. The worker can't re-derive this: it only sees the
+      // snapshot taken now, before the plant has dried out or finished growing.
+      String? nextNotificationKind;
 
       // Calculate next notification time based on plant needs
       for (final garden in gardens) {
@@ -47,14 +49,16 @@ class CloudSyncService {
           
           if (timeUntilDry != null) {
             final dryTime = DateTime.now().add(timeUntilDry);
-            if (nextNotificationTime == null || dryTime.isBefore(nextNotificationTime!)) {
+            if (nextNotificationTime == null || dryTime.isBefore(nextNotificationTime)) {
               nextNotificationTime = dryTime;
+              nextNotificationKind = 'water';
             }
           }
           if (timeUntilGrown != null && plant.growthStage == 4) { // Only notify when fully grown (reaching stage 5)
             final grownTime = DateTime.now().add(timeUntilGrown);
-            if (nextNotificationTime == null || grownTime.isBefore(nextNotificationTime!)) {
+            if (nextNotificationTime == null || grownTime.isBefore(nextNotificationTime)) {
               nextNotificationTime = grownTime;
+              nextNotificationKind = 'grown';
             }
           }
         }
@@ -65,11 +69,13 @@ class CloudSyncService {
         'last_synced': FieldValue.serverTimestamp(),
       };
       
-      if (nextNotificationTime != null && nextNotificationTime!.isAfter(DateTime.now())) {
-        updateData['next_notification_time'] = Timestamp.fromDate(nextNotificationTime!);
+      if (nextNotificationTime != null && nextNotificationTime.isAfter(DateTime.now())) {
+        updateData['next_notification_time'] = Timestamp.fromDate(nextNotificationTime);
+        updateData['next_notification_kind'] = nextNotificationKind;
       } else {
         // Remove the field if no notifications are needed, skipping this user in backend queries
         updateData['next_notification_time'] = FieldValue.delete();
+        updateData['next_notification_kind'] = FieldValue.delete();
       }
       
       if (fcmToken != null) {

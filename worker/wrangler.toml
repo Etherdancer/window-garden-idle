@@ -2,5 +2,10 @@ name = "window-garden-idle-notifications"
 main = "src/index.js"
 compatibility_date = "2023-12-01"
 
-# [triggers]
-# crons = ["*/30 * * * *"] # Run every 30 minutes
+[triggers]
+crons = ["*/30 * * * *"] # Run every 30 minutes
+
+# Secrets (set with `wrangler secret put <NAME>`; never commit them):
+#   FIREBASE_CLIENT_EMAIL  – service-account e-mail
+#   FIREBASE_PRIVATE_KEY   – service-account private key (PEM)
+#   MANUAL_TRIGGER_TOKEN   – optional; enables POST /run with "Authorization: Bearer <token>"

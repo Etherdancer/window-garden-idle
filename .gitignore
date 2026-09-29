@@ -53,3 +53,11 @@ debug_*.png
 temp_*.py
 generation_progress.json
 
+
+# Deploy tool caches (contain account details)
+.wrangler/
+**/.wrangler/
+.firebase/
+
+# Debug screenshots from generator scripts
+scripts/debug_*.png
